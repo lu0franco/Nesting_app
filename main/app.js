@@ -6,6 +6,9 @@ const productName = packageJson.productName || 'Kenzap Nesting';
 const appDescription = packageJson.description || 'DXF nesting application';
 const WEBSITE_URL = 'https://kenzap.com/nesting/';
 const SUPPORT_URL = 'https://kenzap.com/nesting-support/';
+const RELEASES_URL = 'https://github.com/kenzap/nesting-app/releases';
+const REDDIT_URL = 'https://www.reddit.com/r/kenzap/';
+const LINKEDIN_URL = 'https://www.linkedin.com/company/kenzap';
 
 let mainWindow = null;
 
@@ -88,12 +91,24 @@ function buildApplicationMenu({ isDevMode = false } = {}) {
       label: 'Help',
       submenu: [
         {
-          label: `${productName} Website`,
-          click: () => { void shell.openExternal(WEBSITE_URL); },
-        },
-        {
           label: 'Support',
           click: () => { void shell.openExternal(SUPPORT_URL); },
+        },
+        {
+          label: 'Release Notes',
+          click: () => { void shell.openExternal(RELEASES_URL); },
+        },
+        {
+          label: 'Reddit Community',
+          click: () => { void shell.openExternal(REDDIT_URL); },
+        },
+        {
+          label: 'LinkedIn',
+          click: () => { void shell.openExternal(LINKEDIN_URL); },
+        },
+        {
+          label: `${productName} Website`,
+          click: () => { void shell.openExternal(WEBSITE_URL); },
         },
       ],
     },
