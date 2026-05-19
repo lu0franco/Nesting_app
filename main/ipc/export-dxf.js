@@ -424,6 +424,11 @@ function registerExportDxfIpc() {
         const { chars, charH, charW, startX, baseY } = layout;
         const entities = [];
         const style = exportSettings.engravingStyle === 'simple' ? 'simple' : 'stroked';
+        const glyphPoint = (point, ox) => ({
+          x: +(ox + point[0] * charW).toFixed(4),
+          y: +(baseY + (1 - point[1]) * charH).toFixed(4),
+          z: 0,
+        });
 
         const pushLoop = (loop, ox) => {
           if (!Array.isArray(loop) || loop.length < 2) return;
@@ -433,8 +438,8 @@ function registerExportDxfIpc() {
             entities.push({
               type: 'LINE',
               layer: layerName,
-              start: { x: +(ox + a[0] * charW).toFixed(4), y: +(baseY + a[1] * charH).toFixed(4), z: 0 },
-              end: { x: +(ox + b[0] * charW).toFixed(4), y: +(baseY + b[1] * charH).toFixed(4), z: 0 },
+              start: glyphPoint(a, ox),
+              end: glyphPoint(b, ox),
             });
           }
         };
@@ -451,8 +456,8 @@ function registerExportDxfIpc() {
             entities.push({
               type: 'LINE',
               layer: layerName,
-              start: { x: +(ox + a[0] * charW).toFixed(4), y: +(baseY + a[1] * charH).toFixed(4), z: 0 },
-              end: { x: +(ox + b[0] * charW).toFixed(4), y: +(baseY + b[1] * charH).toFixed(4), z: 0 },
+              start: glyphPoint(a, ox),
+              end: glyphPoint(b, ox),
             });
           });
         });
