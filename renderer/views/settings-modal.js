@@ -12,7 +12,14 @@
     // booleans and number inputs to JS numbers so callers always get the right type.
     function settingFieldValue(field) {
       if (field.type === 'checkbox') return field.checked;
-      if (field.type === 'number') return field.value === '' ? '' : Number(field.value);
+      if (field.type === 'number') {
+        if (field.value === '') return '';
+        const numeric = Number(field.value);
+        if (!Number.isFinite(numeric)) return '';
+        const min = field.min === '' ? -Infinity : Number(field.min);
+        const max = field.max === '' ? Infinity : Number(field.max);
+        return Math.min(max, Math.max(min, numeric));
+      }
       return field.value;
     }
 
@@ -70,6 +77,7 @@
     // Throws if the IPC bridge reports a failure so the caller can surface the error.
     async function persistCurrentSettings() {
       state.settings = normalizeDialogSettings(collectSettingsFromDialog());
+      applySettingsToDialog(state.settings);
       if (!window.electronAPI?.saveAppSettings) return;
       const result = await window.electronAPI.saveAppSettings(state.settings);
       if (!result?.success) {
