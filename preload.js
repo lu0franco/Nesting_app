@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   parseDXF:       (filePath, bookmark = null) => ipcRenderer.invoke('parse-dxf', { filePath, bookmark }),
   savePlacementJSON: (payload) => ipcRenderer.invoke('save-placement-json', payload),
+  openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
   loadAppSettings: () => ipcRenderer.invoke('load-app-settings'),
   saveAppSettings: (settings) => ipcRenderer.invoke('save-app-settings', settings),
   loadJobState: () => ipcRenderer.invoke('load-job-state'),

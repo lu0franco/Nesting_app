@@ -1,4 +1,4 @@
-const { app, dialog, ipcMain } = require('electron');
+const { app, dialog, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { cleanupTempArtifacts } = require('../utils/temp-retention');
@@ -106,6 +106,17 @@ function registerFileIpc({ getMainWindow }) {
       fs.writeFileSync(filePath, JSON.stringify(payload, null, 2), 'utf-8');
 
       return { success: true, path: filePath, directory: tempDir };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('open-external-url', async (event, targetUrl) => {
+    try {
+      const url = String(targetUrl || '').trim();
+      if (!url) return { success: false, error: 'No URL provided' };
+      await shell.openExternal(url);
+      return { success: true };
     } catch (err) {
       return { success: false, error: err.message };
     }

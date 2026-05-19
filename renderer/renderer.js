@@ -25,6 +25,9 @@ const dom = {
   startBtn: document.getElementById('startBtn'),
   stopBtn: document.getElementById('stopBtn'),
   statusChip: document.getElementById('statusChip'),
+  feedbackBanner: document.getElementById('feedbackBanner'),
+  feedbackBannerAction: document.getElementById('feedbackBannerAction'),
+  feedbackBannerClose: document.getElementById('feedbackBannerClose'),
   fileList: document.getElementById('fileList'),
   sheetList: document.getElementById('sheetList'),
   dropZone: document.getElementById('dropZone'),
@@ -80,6 +83,9 @@ const dom = {
 const { state, schedulePersistJobState, hydrateJobState } = window.NestStore.createAppStore();
 const { DEFAULT_ENGRAVING_COLOR } = window.NestConstants;
 const { partLabelFromName } = window.NestHelpers;
+const FEEDBACK_BANNER_STORAGE_KEY = 'kenzap.feedback-banner.dismissedAt.v2';
+const FEEDBACK_SUPPORT_URL = 'https://kenzap.com/nesting-support/';
+const FEEDBACK_BANNER_COOLDOWN_MS = 60 * 24 * 60 * 60 * 1000;
 
 // Timer used to auto-clear drag-debug messages after a few seconds.
 let dragDebugTimer = null;
@@ -108,6 +114,57 @@ function setNestStatsTone(tone = '') {
 function syncViewportEmptyState(isEmpty) {
   if (!dom.viewport) return;
   dom.viewport.classList.toggle('empty-grid', !!isEmpty);
+}
+
+function setFeedbackBannerVisible(isVisible) {
+  if (!dom.feedbackBanner) return;
+  dom.feedbackBanner.hidden = !isVisible;
+}
+
+function dismissFeedbackBanner() {
+  try {
+    window.localStorage?.setItem(FEEDBACK_BANNER_STORAGE_KEY, String(Date.now()));
+  } catch {
+    // Ignore persistence failures and still hide the banner for this session.
+  }
+  setFeedbackBannerVisible(false);
+}
+
+function openFeedbackUrl() {
+  if (window.electronAPI?.openExternalUrl) {
+    window.electronAPI.openExternalUrl(FEEDBACK_SUPPORT_URL).catch(error => {
+      console.error('[Feedback Banner] Failed to open support URL:', error);
+    });
+    return;
+  }
+  window.open(FEEDBACK_SUPPORT_URL, '_blank', 'noopener');
+}
+
+function bindFeedbackBanner() {
+  if (!dom.feedbackBanner || !dom.feedbackBannerAction || !dom.feedbackBannerClose) return;
+  let dismissed = false;
+  try {
+    const rawValue = window.localStorage?.getItem(FEEDBACK_BANNER_STORAGE_KEY);
+    if (rawValue) {
+      const dismissedAt = Number(rawValue);
+      if (Number.isFinite(dismissedAt) && dismissedAt > 0) {
+        dismissed = (Date.now() - dismissedAt) < FEEDBACK_BANNER_COOLDOWN_MS;
+      } else {
+        // Migrate any older non-timestamp value into a fresh cooldown window.
+        window.localStorage?.setItem(FEEDBACK_BANNER_STORAGE_KEY, String(Date.now()));
+        dismissed = true;
+      }
+    }
+  } catch {
+    dismissed = false;
+  }
+  setFeedbackBannerVisible(!dismissed);
+
+  dom.feedbackBannerAction.addEventListener('click', () => {
+    openFeedbackUrl();
+    dismissFeedbackBanner();
+  });
+  dom.feedbackBannerClose.addEventListener('click', dismissFeedbackBanner);
 }
 
 // ─── Service APIs ─────────────────────────────────────────────────────────────
@@ -462,6 +519,7 @@ function bindOverlayClose() {
   canvasViewApi.bind();
   exportServiceApi.bind();
   nestingServiceApi.bind();
+  bindFeedbackBanner();
   bindDragAndDrop();
   bindOverlayClose();
   bindExplicitListScroll(dom.fileList);
