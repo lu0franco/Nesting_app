@@ -6,6 +6,22 @@
     'arrangement',
   ];
 
+  const SHEET_WIDTH_PRIORITY_WEIGHTS = {
+    none: 0.0,
+    low: 0.5,
+    medium: 1.5,
+    high: 5.0,
+  };
+
+  const PREFERRED_ALIGNMENTS = [
+    'top',
+    'top-left',
+    'top-right',
+    'bottom',
+    'bottom-left',
+    'bottom-right',
+  ];
+
   const SETTINGS_DEFAULTS = {
     partSpacing: 0,
     sheetMargin: 0,
@@ -19,6 +35,7 @@
     engravingStyle: 'simple',
     sketchContourMethod: 'arrangement',
     multiSketchDetection: true,
+    sheetWidthPriority: 'high',
   };
 
   function coerceByDefault(value, fallback) {
@@ -57,7 +74,7 @@
       normalized.sketchContourMethod = 'auto';
     }
 
-    if (!['top', 'bottom'].includes(normalized.preferredAlignment)) {
+    if (!PREFERRED_ALIGNMENTS.includes(normalized.preferredAlignment)) {
       normalized.preferredAlignment = SETTINGS_DEFAULTS.preferredAlignment;
     }
 
@@ -71,6 +88,12 @@
 
     if (!SKETCH_CONTOUR_METHODS.includes(normalized.sketchContourMethod)) {
       normalized.sketchContourMethod = SETTINGS_DEFAULTS.sketchContourMethod;
+    }
+
+    if (!(String(normalized.sheetWidthPriority || '').toLowerCase() in SHEET_WIDTH_PRIORITY_WEIGHTS)) {
+      normalized.sheetWidthPriority = SETTINGS_DEFAULTS.sheetWidthPriority;
+    } else {
+      normalized.sheetWidthPriority = String(normalized.sheetWidthPriority).toLowerCase();
     }
 
     const engravingLayerRaw = normalized.engravingLayer;
@@ -93,6 +116,8 @@
   const settingsApi = {
     SETTINGS_DEFAULTS,
     SKETCH_CONTOUR_METHODS,
+    SHEET_WIDTH_PRIORITY_WEIGHTS,
+    PREFERRED_ALIGNMENTS,
     normalizeSettings,
   };
 

@@ -320,8 +320,18 @@ function registerSparrowIpc() {
       if (Number.isFinite(options.minItemSeparation) && options.minItemSeparation >= 0) {
         args.push('--min-item-separation', String(options.minItemSeparation));
       }
+      if (options.exactCoedge || options.minItemSeparation === 0) {
+        args.push('--exact-coedge');
+      }
+      if (Number.isFinite(options.bucketFillWeight) && options.bucketFillWeight >= 0) {
+        args.push('--bucket-fill-weight', String(options.bucketFillWeight));
+      }
       if (options.align === 'top') args.push('--align-top');
+      if (options.align === 'top-left') args.push('--align-top-left');
+      if (options.align === 'top-right') args.push('--align-top-right');
       if (options.align === 'bottom') args.push('--align-bottom');
+      if (options.align === 'bottom-left') args.push('--align-bottom-left');
+      if (options.align === 'bottom-right') args.push('--align-bottom-right');
 
       const runId = `${safeName}-${Date.now()}`;
       const child = spawn(sparrowPath, args, { cwd: runDir });

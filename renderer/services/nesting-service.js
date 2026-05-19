@@ -1,7 +1,7 @@
-'use strict';
+  'use strict';
 
-(function defineNestingService(globalScope) {
-  function createNestingService({
+  (function defineNestingService(globalScope) {
+    function createNestingService({
     state,
     dom,
     getCurrentNestingSettings,
@@ -10,11 +10,19 @@
     setNestStatsTone,
     showNestResult,
     renderTabs,
-    syncExportButton,
-  }) {
-    let nestInterval = null;
-    let sparrowRunAborted = false;
-    let activeSparrowRunId = null;
+      syncExportButton,
+    }) {
+      const {
+        SHEET_WIDTH_PRIORITY_WEIGHTS = {
+          none: 0.0,
+          low: 0.5,
+          medium: 1.5,
+          high: 5.0,
+        },
+      } = globalScope.NestSettings || {};
+      let nestInterval = null;
+      let sparrowRunAborted = false;
+      let activeSparrowRunId = null;
 
     // Parses raw stdout/stderr from the solver binary into a clean one-line message.
     // Prefers explicit "error:" lines, falls back to the last non-info line, then to raw text.
@@ -144,14 +152,22 @@
         try {
           const primarySheet = state.sheets[0] || {};
           const settings = getCurrentNestingSettings();
+          const bucketFillWeight = SHEET_WIDTH_PRIORITY_WEIGHTS[
+            String(settings.sheetWidthPriority || '').toLowerCase()
+          ];
+          const partSpacing = Number(settings.partSpacing) || 0;
           const result = await window.electronAPI.runSparrow(exported.payload, {
             globalTime: Number(settings.timeLimit) || 60,
             rngSeed: 42,
             earlyTermination: !!settings.earlyStopping,
             maxStripLength: primarySheet.widthMode === 'unlimited' ? null : Number(primarySheet.width) || null,
             stripMargin: Number(settings.sheetMargin) || 0,
-            minItemSeparation: Number(settings.partSpacing) || 0,
-            align: settings.preferredAlignment === 'bottom' ? 'bottom' : 'top',
+            minItemSeparation: partSpacing,
+            exactCoedge: partSpacing === 0,
+            align: String(settings.preferredAlignment || 'top'),
+            bucketFillWeight: Number.isFinite(bucketFillWeight)
+              ? bucketFillWeight
+              : SHEET_WIDTH_PRIORITY_WEIGHTS.high,
           });
 
           if (!result?.success || !result.runId) {

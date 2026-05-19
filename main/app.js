@@ -2,7 +2,7 @@ const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('path');
 const packageJson = require('../package.json');
 
-const productName = packageJson.productName || 'KENZAP NEST';
+const productName = packageJson.productName || 'Kenzap Nesting';
 const appDescription = packageJson.description || 'DXF nesting application';
 const WEBSITE_URL = 'https://kenzap.com/nesting/';
 const SUPPORT_URL = 'https://kenzap.com/nesting-support/';

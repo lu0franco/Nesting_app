@@ -150,7 +150,11 @@
           <label>Preferred Alignment</label>
           <select data-setting-key="preferredAlignment">
             <option value="top" selected>Top</option>
+            <option value="top-left">Top Left</option>
+            <option value="top-right">Top Right</option>
             <option value="bottom">Bottom</option>
+            <option value="bottom-left">Bottom Left</option>
+            <option value="bottom-right">Bottom Right</option>
           </select>
         </div>
         <div class="setting-row">
@@ -159,6 +163,15 @@
             <input type="number" value="60" min="10" step="10" data-setting-key="timeLimit" />
             <span class="unit">seconds</span>
           </div>
+        </div>
+        <div class="setting-row">
+          <label>Sheet Width Priority</label>
+          <select data-setting-key="sheetWidthPriority">
+            <option value="none">None</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high" selected>High</option>
+          </select>
         </div>
         <div class="setting-row" data-dev-only-setting="sketchContourMethod" hidden>
           <label>Sketch contour method</label>
