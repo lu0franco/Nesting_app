@@ -320,9 +320,6 @@ function registerSparrowIpc() {
       if (Number.isFinite(options.minItemSeparation) && options.minItemSeparation >= 0) {
         args.push('--min-item-separation', String(options.minItemSeparation));
       }
-      if (options.exactCoedge || options.minItemSeparation === 0) {
-        args.push('--exact-coedge');
-      }
       if (Number.isFinite(options.bucketFillWeight) && options.bucketFillWeight >= 0) {
         args.push('--bucket-fill-weight', String(options.bucketFillWeight));
       }

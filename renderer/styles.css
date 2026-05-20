@@ -680,7 +680,17 @@ body.platform-mac .topbar-left {
   border-top-color: rgba(247,95,95,.35);
 }
 
+.canvas-statusbar.warning {
+  color: #fff0cf;
+  background: rgba(247,195,79,.12);
+  border-top-color: rgba(247,195,79,.35);
+}
+
 .canvas-statusbar.error .canvas-statusbar-icon {
+  display: inline-flex;
+}
+
+.canvas-statusbar.warning .canvas-statusbar-icon {
   display: inline-flex;
 }
 
@@ -756,8 +766,7 @@ body.platform-mac .topbar-left {
 .settings-section-title {
   font-size: 10.5px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .07em;
+  letter-spacing: .01em;
   color: var(--text-muted);
   margin-bottom: 12px;
 }

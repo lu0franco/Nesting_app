@@ -107,6 +107,7 @@ function setStatus(status) {
 function setNestStatsTone(tone = '') {
   if (!dom.canvasStatusbar) return;
   dom.canvasStatusbar.classList.toggle('error', tone === 'error');
+  dom.canvasStatusbar.classList.toggle('warning', tone === 'warning');
 }
 
 // Toggles the dotted-grid placeholder that fills the canvas area when no

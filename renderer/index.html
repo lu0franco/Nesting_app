@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kenzao Nest</title>
+  <title>Kenzap Nesting</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -105,16 +105,16 @@
     </div>
     <div class="modal-body">
       <div class="settings-section">
-        <div class="settings-section-title">Spacing &amp; Tolerances</div>
+        <div class="settings-section-title">Spacing &amp; tolerances</div>
         <div class="setting-row">
-          <label>Part Spacing (mm)</label>
+          <label>Part spacing (mm)</label>
           <div class="input-with-unit">
             <input type="number" value="0" min="0" step="0.5" data-setting-key="partSpacing" />
             <span class="unit">mm</span>
           </div>
         </div>
         <div class="setting-row">
-          <label>Sheet Margin (mm)</label>
+          <label>Sheet margin (mm)</label>
           <div class="input-with-unit">
             <input type="number" value="0" min="0" step="1" data-setting-key="sheetMargin" />
             <span class="unit">mm</span>
@@ -125,7 +125,7 @@
       <div class="settings-section">
         <div class="settings-section-title">Rotation</div>
         <div class="setting-row">
-          <label>Rotation Step</label>
+          <label>Rotation step</label>
           <select data-setting-key="rotationStep">
             <option value="none">No rotation</option>
             <option value="90" selected>90°</option>
@@ -140,37 +140,35 @@
       <div class="settings-section">
         <div class="settings-section-title">Algorithm</div>
         <div class="setting-row">
-          <label>Early Stopping</label>
+          <label>Early stopping</label>
           <label class="toggle">
             <input type="checkbox" checked data-setting-key="earlyStopping" />
             <span class="toggle-track"></span>
           </label>
         </div>
         <div class="setting-row">
-          <label>Preferred Alignment</label>
+          <label>Preferred alignment</label>
           <select data-setting-key="preferredAlignment">
             <option value="top" selected>Top</option>
-            <option value="top-left">Top Left</option>
-            <option value="top-right">Top Right</option>
+            <option value="top-left">Top left</option>
+            <option value="top-right">Top right</option>
             <option value="bottom">Bottom</option>
-            <option value="bottom-left">Bottom Left</option>
-            <option value="bottom-right">Bottom Right</option>
+            <option value="bottom-left">Bottom left</option>
+            <option value="bottom-right">Bottom right</option>
           </select>
         </div>
         <div class="setting-row">
-          <label>Time Limit</label>
+          <label>Time limit</label>
           <div class="input-with-unit">
             <input type="number" value="60" min="10" step="10" data-setting-key="timeLimit" />
             <span class="unit">seconds</span>
           </div>
         </div>
         <div class="setting-row">
-          <label>Sheet Width Priority</label>
+          <label>Sheet width optimizaton</label>
           <select data-setting-key="sheetWidthPriority">
-            <option value="none">None</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high" selected>High</option>
+            <option value="disabled">Disabled</option>
+            <option value="enabled" selected>Enabled</option>
           </select>
         </div>
         <div class="setting-row" data-dev-only-setting="sketchContourMethod" hidden>

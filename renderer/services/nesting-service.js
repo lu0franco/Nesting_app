@@ -14,10 +14,8 @@
     }) {
       const {
         SHEET_WIDTH_PRIORITY_WEIGHTS = {
-          none: 0.0,
-          low: 0.5,
-          medium: 1.5,
-          high: 5.0,
+          disabled: 0.0,
+          enabled: 1.0,
         },
       } = globalScope.NestSettings || {};
       let nestInterval = null;
@@ -47,6 +45,15 @@
       const summary = message || 'Sparrow failed';
       dom.nestStats.textContent = `Run failed: ${summary}`;
       dom.nestStats.title = details || summary;
+    }
+
+    // Shows a gentle preflight hint when Run is pressed before the user has
+    // added the required DXF parts and/or sheets.
+    function showStartRequirementsWarning(message) {
+      setStatus('idle');
+      setNestStatsTone('warning');
+      dom.nestStats.textContent = message;
+      dom.nestStats.title = '';
     }
 
     // Called on a 500ms interval while the solver is running to fetch the latest result.
@@ -120,8 +127,21 @@
       // Start button — exports placement JSON, runs Sparrow, and starts polling for results.
       dom.startBtn.addEventListener('click', async () => {
         if (state.status === 'running') return;
-        if (!state.files.length) return;
-        if (!state.sheets.length) return;
+
+        const hasFiles = state.files.length > 0;
+        const hasSheets = state.sheets.length > 0;
+        if (!hasFiles && !hasSheets) {
+          showStartRequirementsWarning('Add DXF parts and at least one sheet, then press Run.');
+          return;
+        }
+        if (!hasFiles) {
+          showStartRequirementsWarning('Add one or more DXF parts before running nesting.');
+          return;
+        }
+        if (!hasSheets) {
+          showStartRequirementsWarning('Add at least one sheet before running nesting.');
+          return;
+        }
 
         let exported;
         try {
@@ -167,7 +187,7 @@
             align: String(settings.preferredAlignment || 'top'),
             bucketFillWeight: Number.isFinite(bucketFillWeight)
               ? bucketFillWeight
-              : SHEET_WIDTH_PRIORITY_WEIGHTS.high,
+              : SHEET_WIDTH_PRIORITY_WEIGHTS.enabled,
           });
 
           if (!result?.success || !result.runId) {
