@@ -803,6 +803,12 @@ body.platform-mac .topbar-left {
   width: 72px;
   text-align: right;
 }
+.modal-body .input-with-unit input[type="number"] {
+  width: 84px;
+  text-align: left;
+  padding-left: 10px;
+  padding-right: 16px;
+}
 .unit {
   padding: 5px 8px 5px 4px;
   font-size: 11px;
@@ -819,13 +825,17 @@ body.platform-mac .topbar-left {
   font-size: 13px;
   padding: 5px 10px;
   outline: none;
-  transition: border-color .12s;
+  transition: border-color .12s, box-shadow .12s;
 }
 .modal-body select { padding-right: 28px; appearance: none; cursor: pointer; }
 .modal-body select:focus,
-.modal-body input[type="text"]:focus,
-.input-with-unit input:focus {
+.modal-body input[type="text"]:focus {
   border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(79,142,247,.14);
+}
+.input-with-unit:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(79,142,247,.14);
 }
 .modal-body input[type="text"] { flex: 1; }
 

@@ -14,8 +14,8 @@
     }) {
       const {
         SHEET_WIDTH_PRIORITY_WEIGHTS = {
-          disabled: 0.0,
-          enabled: 1.0,
+          'by-width': 0.0,
+          'by-height': 1.0,
         },
       } = globalScope.NestSettings || {};
       let nestInterval = null;
@@ -176,7 +176,7 @@
             String(settings.sheetWidthPriority || '').toLowerCase()
           ];
           const partSpacing = Number(settings.partSpacing) || 0;
-          const result = await window.electronAPI.runSparrow(exported.payload, {
+          const sparrowOptions = {
             globalTime: Number(settings.timeLimit) || 60,
             rngSeed: 42,
             earlyTermination: !!settings.earlyStopping,
@@ -185,10 +185,9 @@
             minItemSeparation: partSpacing,
             exactCoedge: partSpacing === 0,
             align: String(settings.preferredAlignment || 'top'),
-            bucketFillWeight: Number.isFinite(bucketFillWeight)
-              ? bucketFillWeight
-              : SHEET_WIDTH_PRIORITY_WEIGHTS.enabled,
-          });
+            ...(Number.isFinite(bucketFillWeight) ? { bucketFillWeight } : {}),
+          };
+          const result = await window.electronAPI.runSparrow(exported.payload, sparrowOptions);
 
           if (!result?.success || !result.runId) {
             throw new Error(result?.error || 'Failed to start Sparrow');

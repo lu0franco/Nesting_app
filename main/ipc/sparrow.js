@@ -7,6 +7,10 @@ const { cleanupTempArtifacts } = require('../utils/temp-retention');
 let activeSparrowProcess = null;
 let activeSparrowRun = null;
 
+function isDevMode() {
+  return !app.isPackaged || process.argv.includes('--dev');
+}
+
 function nativePlatformDir() {
   switch (process.platform) {
     case 'win32':
@@ -35,6 +39,50 @@ function nativeBaseDir() {
 
 function resolveNativeExecutable(baseName) {
   return path.join(nativeBaseDir(), nativeExecutableName(baseName));
+}
+
+function shellQuote(value) {
+  const text = String(value ?? '');
+  if (process.platform === 'win32') return `"${text.replace(/"/g, '\\"')}"`;
+  return `'${text.replace(/'/g, `'\\''`)}'`;
+}
+
+function resolveSparrowCargoManifestPath() {
+  const repoRoot = path.join(__dirname, '..', '..');
+  const candidates = [
+    process.env.SPARROW_CARGO_MANIFEST_PATH,
+    process.env.NESTING_CARGO_MANIFEST_PATH,
+    path.join(repoRoot, '..', 'nesting', 'Cargo.toml'),
+  ].filter(Boolean);
+
+  return candidates.find(candidate => {
+    try {
+      return fs.existsSync(candidate) && fs.statSync(candidate).isFile();
+    } catch {
+      return false;
+    }
+  }) || null;
+}
+
+function buildCargoRunCommand(args) {
+  const manifestPath = resolveSparrowCargoManifestPath();
+  if (!manifestPath) return null;
+
+  return [
+    'cargo',
+    'run',
+    '--manifest-path',
+    manifestPath,
+    '--release',
+    '--bin',
+    'sparrow',
+    '--',
+    ...args,
+  ].map(shellQuote).join(' ');
+}
+
+function buildSpawnCommand(executablePath, args) {
+  return [executablePath, ...args].map(shellQuote).join(' ');
 }
 
 function readJsonIfExists(filePath) {
@@ -329,6 +377,17 @@ function registerSparrowIpc() {
       if (options.align === 'bottom') args.push('--align-bottom');
       if (options.align === 'bottom-left') args.push('--align-bottom-left');
       if (options.align === 'bottom-right') args.push('--align-bottom-right');
+
+      if (isDevMode()) {
+        const cargoCommand = buildCargoRunCommand(args);
+        console.info('[Sparrow][dev] Working directory:', runDir);
+        if (cargoCommand) {
+          console.info('[Sparrow][dev] Cargo command:\n' + cargoCommand);
+        } else {
+          console.info('[Sparrow][dev] Cargo manifest not found. Set SPARROW_CARGO_MANIFEST_PATH to enable cargo command logging.');
+        }
+        console.info('[Sparrow][dev] Spawn command:\n' + buildSpawnCommand(sparrowPath, args));
+      }
 
       const runId = `${safeName}-${Date.now()}`;
       const child = spawn(sparrowPath, args, { cwd: runDir });

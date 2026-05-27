@@ -35,6 +35,8 @@
           qty: effectiveFileQty(file),
           shapes: clonePlain(file.shapes || null),
           layers: clonePlain(file.layers || null),
+          _multiSketchDetection: typeof file._multiSketchDetection === 'boolean' ? file._multiSketchDetection : null,
+          _sketchContourMethod: file._sketchContourMethod || null,
         })),
         sheets: state.sheets.map(sheet => ({
           id: sheet.id,
@@ -82,7 +84,12 @@
 
       const { effectiveFileQty } = globalScope.NestHelpers;
       state.files = Array.isArray(result.state.files)
-        ? result.state.files.map(file => ({ ...file, qty: effectiveFileQty(file) }))
+        ? result.state.files.map(file => ({
+            ...file,
+            qty: effectiveFileQty(file),
+            _multiSketchDetection: typeof file?._multiSketchDetection === 'boolean' ? file._multiSketchDetection : null,
+            _sketchContourMethod: file?._sketchContourMethod || null,
+          }))
         : [];
       state.sheets = Array.isArray(result.state.sheets) ? result.state.sheets : [];
       return state.files.length > 0 || state.sheets.length > 0;

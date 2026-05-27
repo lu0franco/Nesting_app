@@ -7,8 +7,8 @@
   ];
 
   const SHEET_WIDTH_PRIORITY_WEIGHTS = {
-    disabled: 0.0,
-    enabled: 1.0,
+    'by-width': 0.0,
+    'by-height': 1.0,
   };
 
   const PREFERRED_ALIGNMENTS = [
@@ -33,7 +33,7 @@
     engravingStyle: 'simple',
     sketchContourMethod: 'arrangement',
     multiSketchDetection: true,
-    sheetWidthPriority: 'enabled',
+    sheetWidthPriority: 'default',
   };
 
   function coerceByDefault(value, fallback) {
@@ -89,10 +89,22 @@
     }
 
     const rawSheetWidthPriority = String(normalized.sheetWidthPriority || '').toLowerCase();
-    if (['none', 'off', 'disabled', '0', 'false'].includes(rawSheetWidthPriority)) {
-      normalized.sheetWidthPriority = 'disabled';
-    } else if (['low', 'medium', 'high', 'on', 'enabled', '1', 'true'].includes(rawSheetWidthPriority)) {
-      normalized.sheetWidthPriority = 'enabled';
+    if (['default', 'auto', 'omit', 'unset', ''].includes(rawSheetWidthPriority)) {
+      normalized.sheetWidthPriority = 'default';
+    } else if (['disabled', 'none', 'off', '0', 'false', 'by-width', 'width'].includes(rawSheetWidthPriority)) {
+      normalized.sheetWidthPriority = 'by-width';
+    } else if ([
+      'enabled',
+      'low',
+      'medium',
+      'high',
+      'on',
+      '1',
+      'true',
+      'by-height',
+      'height',
+    ].includes(rawSheetWidthPriority)) {
+      normalized.sheetWidthPriority = 'by-height';
     } else if (!(rawSheetWidthPriority in SHEET_WIDTH_PRIORITY_WEIGHTS)) {
       normalized.sheetWidthPriority = SETTINGS_DEFAULTS.sheetWidthPriority;
     } else {

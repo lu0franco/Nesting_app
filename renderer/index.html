@@ -165,13 +165,14 @@
           </div>
         </div>
         <div class="setting-row">
-          <label>Sheet width optimizaton</label>
+          <label>Optimization strategy</label>
           <select data-setting-key="sheetWidthPriority">
-            <option value="disabled">Disabled</option>
-            <option value="enabled" selected>Enabled</option>
+            <option value="default" selected>Auto</option>
+            <option value="by-height">By height</option>
+            <option value="by-width">By length</option>
           </select>
         </div>
-        <div class="setting-row" data-dev-only-setting="sketchContourMethod" hidden>
+        <div class="setting-row" data-dev-only-setting="sketchContourMethod" hidden style="display: none;">
           <label>Sketch contour method</label>
           <select data-setting-key="sketchContourMethod">
             <option value="auto">Auto</option>
@@ -260,23 +261,23 @@
         <div class="setting-row">
           <label>Mode</label>
           <select id="sheetWidthMode">
-            <option value="fixed" selected>Fixed width sheet</option>
-            <option value="max">Optimize up to max width</option>
-            <option value="unlimited">Unlimited strip width</option>
+            <option value="fixed" selected>Fixed size sheet</option>
+            <option value="max">Optimize up to max length</option>
+            <option value="unlimited">Unlimited strip length</option>
           </select>
         </div>
         <div class="sheet-field-head">
-          <span>Length</span>
           <span>Width</span>
+          <span>Length</span>
         </div>
         <div class="sheet-dims-row">
           <div class="input-with-unit">
-            <input type="number" id="sheetHeight" placeholder="Height" value="1250" min="1" />
+            <input type="number" id="sheetHeight" placeholder="Width" value="1250" min="1" />
             <span class="unit">mm</span>
           </div>
           <span class="dims-sep">×</span>
           <div class="input-with-unit">
-            <input type="number" id="sheetWidth" placeholder="Width" value="3000" min="1" />
+            <input type="number" id="sheetWidth" placeholder="Length" value="3000" min="1" />
             <span class="unit">mm</span>
           </div>
         </div>
@@ -311,7 +312,7 @@
           <rect x="1" y="9" width="5" height="12" rx="1.5" fill="#4f8ef7" opacity="0.5"/>
           <rect x="8" y="12" width="13" height="9" rx="1.5" fill="#4f8ef7" opacity="0.85"/>
         </svg>
-        <span class="app-name">KENZAP NEST</span>
+        <span class="app-name">KENZAP NESTING</span>
       </div>
     </div>
 

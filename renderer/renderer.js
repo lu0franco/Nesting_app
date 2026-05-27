@@ -512,7 +512,7 @@ function bindOverlayClose() {
 // state (files + sheets from the last session), and brings every service module
 // to life.  Order matters: sheets must render before tabs, and settings must
 // load before the first preview attempt.
-(function bootstrapRenderer() {
+(async function bootstrapRenderer() {
   filesPaneApi.bind();
   sheetsPaneApi.renderSheets();
   sheetModalApi.bind();
@@ -526,20 +526,41 @@ function bindOverlayClose() {
   bindExplicitListScroll(dom.fileList);
   bindExplicitListScroll(dom.sheetList);
 
-  settingsModalApi.loadPersistedSettings();
+  await settingsModalApi.loadPersistedSettings();
   exportServiceApi.loadLastExportFolder();
   sheetModalApi.updateSheetModeControls();
   syncViewportEmptyState(true);
 
   // Restore the previous session's files and sheets, then re-render both lists.
   // If nothing was saved (first launch), we start clean.
-  hydrateJobState().then(restored => {
-    if (!restored) {
-      state.files = [];
-      state.sheets = [];
+  const restored = await hydrateJobState();
+  if (!restored) {
+    state.files = [];
+    state.sheets = [];
+  }
+
+  // Older saved jobs may have shape quantities but not the preview-setting
+  // metadata used to decide whether those saved shapes are still valid. When
+  // that metadata is missing, opening the preview would reparse the DXF and
+  // reset quantities back to 1. Backfill it once from the current settings.
+  const currentSettings = currentNestingSettings();
+  const contourMethod = String(currentSettings?.sketchContourMethod || 'auto');
+  const multiSketchDetection = !!currentSettings?.multiSketchDetection;
+  let backfilledLegacyFileMetadata = false;
+  state.files.forEach(file => {
+    if (!Array.isArray(file?.shapes) || !file.shapes.length) return;
+    if (typeof file._multiSketchDetection !== 'boolean') {
+      file._multiSketchDetection = multiSketchDetection;
+      backfilledLegacyFileMetadata = true;
     }
-    filesPaneApi.renderFiles();
-    sheetsPaneApi.renderSheets();
-    exportServiceApi.syncExportButton();
+    if (!file._sketchContourMethod) {
+      file._sketchContourMethod = contourMethod;
+      backfilledLegacyFileMetadata = true;
+    }
   });
+  if (backfilledLegacyFileMetadata) schedulePersistJobState();
+
+  filesPaneApi.renderFiles();
+  sheetsPaneApi.renderSheets();
+  exportServiceApi.syncExportButton();
 })();

@@ -70,11 +70,11 @@
       dom.sheetWidth.disabled = unlimited;
 
       if (unlimited) {
-        dom.sheetModeHelp.textContent = 'The strip can continue without a fixed width limit.';
+        dom.sheetModeHelp.textContent = 'The strip can continue without a fixed length limit.';
       } else if (mode === 'max') {
-        dom.sheetModeHelp.textContent = 'Width is treated as a maximum. The algorithm may use less width when possible and will automatically calculate the number of sheets needed and their dimensions.';
+        dom.sheetModeHelp.textContent = 'Length is treated as a maximum. The algorithm may use less length when possible and will automatically calculate the number of sheets needed and their dimensions.';
       } else {
-        dom.sheetModeHelp.textContent = 'A fixed sheet width will be used. The number of sheets required is calculated automatically.';
+        dom.sheetModeHelp.textContent = 'A fixed sheet size will be used. The number of sheets required is calculated automatically.';
       }
 
       syncSheetPresetButtons();

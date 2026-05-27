@@ -19,8 +19,8 @@
         const modeLabel = s.widthMode === 'unlimited'
           ? 'Auto sheets · continuous strip'
           : s.widthMode === 'max'
-            ? 'Auto sheets · width capped'
-            : 'Auto sheets · fixed width';
+            ? 'Auto sheets · length capped'
+            : 'Auto sheets · fixed size';
         const li = document.createElement('li');
         li.className = 'sheet-item';
         li.innerHTML = `
