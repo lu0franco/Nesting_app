@@ -33,7 +33,9 @@ node_modules/
 server/document/pdf
 
 # readme txt
-readme.txt
+readme-microsoft.txt
+readme-ubuntu.txt
+readme-macos.txt
 
 # Optional npm cache directory
 .npm

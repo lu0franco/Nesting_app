@@ -8,6 +8,7 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "preflight:mac-helpers": "node scripts/verify-mac-helpers.js",
+    "preflight:linux-helpers": "node scripts/verify-linux-helpers.js",
     "preflight:win-helpers": "node scripts/verify-win-helpers.js",
     "preflight:appx-host": "node scripts/verify-appx-host.js",
     "appx:upload": "node scripts/make-appxupload.js",
@@ -16,6 +17,7 @@
     "dist:mac": "npm run preflight:mac-helpers && electron-builder --mac dmg zip",
     "dist:mas": "npm run preflight:mac-helpers && electron-builder --mac mas",
     "dist:mas-dev": "npm run preflight:mac-helpers && electron-builder --mac mas-dev",
+    "dist:snap": "npm run preflight:linux-helpers && electron-builder --linux snap",
     "dist:win": "npm run preflight:win-helpers && electron-builder --win nsis",
     "dist:win-portable": "npm run preflight:win-helpers && electron-builder --win portable",
     "dist:appx": "npm run preflight:win-helpers && npm run preflight:appx-host && electron-builder --win appx --x64 && npm run appx:upload"
@@ -83,6 +85,24 @@
       ],
       "icon": "assets/icon-square.icns"
     },
+    "linux": {
+      "extraResources": [
+        {
+          "from": "native/linux",
+          "to": "native/linux",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ],
+      "icon": "assets/icon-square.png",
+      "target": [
+        "snap"
+      ],
+      "category": "Utility",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "executableName": "kenzap-nesting"
+    },
     "mas": {
       "type": "distribution",
       "entitlements": "build/entitlements.mas.plist",
@@ -110,6 +130,21 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "snap": {
+      "confinement": "strict",
+      "grade": "stable",
+      "allowNativeWayland": true,
+      "plugs": [
+        "desktop",
+        "desktop-legacy",
+        "home",
+        "network",
+        "opengl",
+        "removable-media",
+        "wayland",
+        "x11"
+      ]
     }
   }
 }

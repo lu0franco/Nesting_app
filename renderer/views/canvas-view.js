@@ -164,6 +164,21 @@
       return serializer.serializeToString(root);
     }
 
+    // Cheap stable signature for an SVG string used to detect "same content"
+    // across polls. djb2 over ~32 byte-strided samples — enough collision
+    // resistance for our usage (same-poll equality check, not security) and
+    // O(1) regardless of SVG length.
+    function quickSvgHash(text) {
+      if (!text) return '0';
+      const len = text.length;
+      const step = Math.max(1, Math.floor(len / 32));
+      let hash = 5381;
+      for (let i = 0; i < len; i += step) {
+        hash = ((hash << 5) + hash + text.charCodeAt(i)) | 0;
+      }
+      return String(hash);
+    }
+
     // Main SVG post-processor — applies the dark colour scheme to the raw solver output.
     // Injects a grid background, recolours part fills to navy with a blue glow, tightens
     // the sheet border style, strips solver stat labels, and calls adjustSvgForFixedWidth
@@ -205,31 +220,58 @@
       return styled;
     }
 
-    // Rebuilds the sheet tab row above the canvas from the current solver result.
-    // Each tab wires up a click handler to showNestResult and the active tab is
-    // kept in view via smooth scrollIntoView.
+    // Reconciles the sheet tab row with the current solver result.
+    //
+    // Key invariant: we DO NOT recreate tab buttons unless the strip count
+    // actually changed. In barrier mode the poll handler may fire several
+    // times per second with the same `strip_count`, and a naive
+    // `innerHTML = ''` + rebuild would (a) destroy in-flight clicks, and
+    // (b) snap the scroll position back to the active tab on every poll —
+    // making manual navigation between sheets impossible.
     function renderTabs() {
-      dom.canvasTabs.innerHTML = '';
-      if (state.nestResult?.strips?.length) {
-        const activeIndex = Math.min(state.activeStripIndex || 0, Math.max(0, state.nestResult.strips.length - 1));
-        state.activeStripIndex = activeIndex;
-        state.nestResult.strips.forEach((strip, i) => {
-          const btn = document.createElement('button');
-          btn.className = 'canvas-tab' + (i === activeIndex ? ' active' : '');
-          btn.textContent = `Sheet ${i + 1}`;
-          btn.addEventListener('click', () => {
-            dom.canvasTabs.querySelectorAll('.canvas-tab').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.activeStripIndex = i;
-            btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-            showNestResult(i);
-          });
-          dom.canvasTabs.appendChild(btn);
-          if (i === activeIndex) {
-            requestAnimationFrame(() => {
-              btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-            });
-          }
+      if (!state.nestResult?.strips?.length) {
+        dom.canvasTabs.innerHTML = '';
+        return;
+      }
+
+      const stripCount = state.nestResult.strips.length;
+      const activeIndex = Math.min(state.activeStripIndex || 0, Math.max(0, stripCount - 1));
+      state.activeStripIndex = activeIndex;
+
+      // Walk the existing buttons in-place. Add missing tail buttons, remove
+      // extras if compress collapsed sheets, update the active class. The
+      // smooth scroll only fires on the very first render or when the strip
+      // count grew — never on a same-count re-poll.
+      const existing = Array.from(dom.canvasTabs.querySelectorAll('.canvas-tab'));
+      const initialCount = existing.length;
+
+      for (let i = initialCount; i < stripCount; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'canvas-tab';
+        btn.textContent = `Sheet ${i + 1}`;
+        btn.addEventListener('click', () => {
+          dom.canvasTabs.querySelectorAll('.canvas-tab').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.activeStripIndex = i;
+          btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          showNestResult(i);
+        });
+        dom.canvasTabs.appendChild(btn);
+        existing.push(btn);
+      }
+      while (existing.length > stripCount) {
+        const btn = existing.pop();
+        btn.remove();
+      }
+
+      existing.forEach((btn, i) => {
+        btn.classList.toggle('active', i === activeIndex);
+      });
+
+      const countGrew = stripCount > initialCount;
+      if (countGrew) {
+        requestAnimationFrame(() => {
+          existing[activeIndex]?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
         });
       }
     }
@@ -338,12 +380,28 @@
     // Prefers a real solver result (styled via styleStripSVG) and falls back to the mock
     // preview when none is available yet. Updates the status bar with parts count,
     // utilisation percentage, and strip width.
+    //
+    // Skips the heavy DOM swap when (a) the same sheet is already displayed
+    // and (b) its SVG content hasn't changed. Without this guard, polling
+    // re-runs `innerHTML = ...` + `applyZoom(true)` several times per second
+    // during barrier-mode optimization, which re-centers the viewport and
+    // makes pan/zoom feel jittery.
     function showNestResult(sheetIndex) {
       if (state.nestResult?.strips?.[sheetIndex]?.svg) {
         const strip = state.nestResult.strips[sheetIndex];
         const sheet = currentSheetConfig();
         state.activeStripIndex = sheetIndex;
-        dom.svgContainer.innerHTML = styleStripSVG(strip.svg, strip);
+        const styled = styleStripSVG(strip.svg, strip);
+        const previousIndex = dom.svgContainer.dataset.activeIndex;
+        const sameStrip = previousIndex === String(sheetIndex);
+        const sameSvg = sameStrip && dom.svgContainer.dataset.svgLen === String(styled.length)
+          && dom.svgContainer.dataset.svgHash === quickSvgHash(styled);
+        if (!sameSvg) {
+          dom.svgContainer.innerHTML = styled;
+          dom.svgContainer.dataset.activeIndex = String(sheetIndex);
+          dom.svgContainer.dataset.svgLen = String(styled.length);
+          dom.svgContainer.dataset.svgHash = quickSvgHash(styled);
+        }
         dom.svgContainer.style.display = 'grid';
         dom.emptyState.style.display = 'none';
         syncViewportEmptyState(false);
@@ -356,7 +414,10 @@
         const partsText = placed > 0 ? ` · ${placed} parts` : '';
         const utilText = density ? ` · Utilization: ${density}` : '';
         dom.nestStats.textContent = `${previewPrefix}Sheet ${sheetIndex + 1} of ${state.nestResult.strips.length}${partsText}${utilText} · Width: ${usedWidth}`;
-        applyZoom(true);
+        // Only re-center the viewport when the SVG actually got swapped — a
+        // no-op call to `applyZoom(true)` still resets scrollLeft/scrollTop,
+        // which is exactly what we want to avoid on same-sheet re-polls.
+        if (!sameSvg) applyZoom(true);
         return;
       }
 

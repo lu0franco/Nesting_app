@@ -371,6 +371,13 @@ function registerSparrowIpc() {
       if (Number.isFinite(options.bucketFillWeight) && options.bucketFillWeight >= 0) {
         args.push('--bucket-fill-weight', String(options.bucketFillWeight));
       }
+      // Multi-strip strategy: 'barriers' (new mode, single canvas with virtual
+      // separators) or 'prebucket' (legacy bucket planner). Only emitted when
+      // explicitly set so older sparrow binaries that don't recognize the flag
+      // can still be driven from this app.
+      if (options.multiStripMode === 'barriers' || options.multiStripMode === 'prebucket') {
+        args.push('--multi-strip-mode', options.multiStripMode);
+      }
       if (options.align === 'top') args.push('--align-top');
       if (options.align === 'top-left') args.push('--align-top-left');
       if (options.align === 'top-right') args.push('--align-top-right');

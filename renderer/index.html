@@ -165,11 +165,12 @@
           </div>
         </div>
         <div class="setting-row">
-          <label>Optimization strategy</label>
-          <select data-setting-key="sheetWidthPriority">
-            <option value="default" selected>Auto</option>
-            <option value="by-height">By height</option>
-            <option value="by-width">By length</option>
+          <label title="Only applies when running placements on multiple sheets. Auto uses the unified barrier-mode packer — recommended for most jobs. The bucketed options run the legacy planner that partitions items into per-sheet buckets up-front.">Multi-sheet strategy</label>
+          <select data-setting-key="multiSheetStrategy">
+            <option value="auto" selected>Auto</option>
+            <option value="by-height">By width</option>
+            <option value="by-length">By length</option>
+            <option value="by-height-or-length">By width or length</option>
           </select>
         </div>
         <div class="setting-row" data-dev-only-setting="sketchContourMethod" hidden style="display: none;">

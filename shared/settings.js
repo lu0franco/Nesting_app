@@ -11,6 +11,26 @@
     'by-height': 1.0,
   };
 
+  // Single source of truth for the consolidated multi-sheet strategy.
+  // Each value maps to a (multiStripMode, bucketFillWeight) pair that the
+  // renderer hands to Sparrow's IPC layer.
+  //
+  // `bucketFillWeight: null` means "omit from sparrow CLI" — for barriers
+  // mode the flag is irrelevant; for `by-height-or-length` it triggers
+  // Sparrow's built-in auto-pick over [0.0, 1.0, 2.0].
+  const MULTI_SHEET_STRATEGIES = [
+    'auto',
+    'by-height',
+    'by-length',
+    'by-height-or-length',
+  ];
+  const MULTI_SHEET_STRATEGY_OPTIONS = {
+    'auto': { multiStripMode: 'barriers', bucketFillWeight: null },
+    'by-height': { multiStripMode: 'prebucket', bucketFillWeight: 1.0 },
+    'by-length': { multiStripMode: 'prebucket', bucketFillWeight: 0.0 },
+    'by-height-or-length': { multiStripMode: 'prebucket', bucketFillWeight: null },
+  };
+
   const PREFERRED_ALIGNMENTS = [
     'top',
     'top-left',
@@ -33,7 +53,10 @@
     engravingStyle: 'simple',
     sketchContourMethod: 'arrangement',
     multiSketchDetection: true,
-    sheetWidthPriority: 'default',
+    // Combined multi-sheet strategy. Replaces the older `useBarrierMode`
+    // (boolean) + `sheetWidthPriority` (dropdown) pair. Migration of stored
+    // legacy values is handled in `normalizeSettings`.
+    multiSheetStrategy: 'auto',
   };
 
   function coerceByDefault(value, fallback) {
@@ -59,6 +82,30 @@
       raw.engravingLayer = raw.showPartLabels ? '2' : 'off';
     }
     delete raw.showPartLabels;
+
+    // Legacy migration: collapse `useBarrierMode` + `sheetWidthPriority` into
+    // the unified `multiSheetStrategy`. Only fires when the new field isn't
+    // already present, so re-saving doesn't clobber an explicit user choice.
+    if (!('multiSheetStrategy' in raw)) {
+      const legacyBarrier = raw.useBarrierMode === true
+        || raw.useBarrierMode === 'true'
+        || raw.useBarrierMode === 1;
+      if (legacyBarrier) {
+        raw.multiSheetStrategy = 'auto';
+      } else if ('sheetWidthPriority' in raw) {
+        const swp = String(raw.sheetWidthPriority || '').toLowerCase();
+        if (['by-width', 'width'].includes(swp)) {
+          raw.multiSheetStrategy = 'by-length';
+        } else if (['by-height', 'height'].includes(swp)) {
+          raw.multiSheetStrategy = 'by-height';
+        } else if (['default', 'auto', ''].includes(swp)) {
+          raw.multiSheetStrategy = 'by-height-or-length';
+        }
+        // Unknown legacy values fall through to the default ('auto').
+      }
+    }
+    delete raw.useBarrierMode;
+    delete raw.sheetWidthPriority;
 
     Object.keys(SETTINGS_DEFAULTS).forEach(key => {
       if (!(key in raw)) return;
@@ -88,27 +135,8 @@
       normalized.sketchContourMethod = SETTINGS_DEFAULTS.sketchContourMethod;
     }
 
-    const rawSheetWidthPriority = String(normalized.sheetWidthPriority || '').toLowerCase();
-    if (['default', 'auto', 'omit', 'unset', ''].includes(rawSheetWidthPriority)) {
-      normalized.sheetWidthPriority = 'default';
-    } else if (['disabled', 'none', 'off', '0', 'false', 'by-width', 'width'].includes(rawSheetWidthPriority)) {
-      normalized.sheetWidthPriority = 'by-width';
-    } else if ([
-      'enabled',
-      'low',
-      'medium',
-      'high',
-      'on',
-      '1',
-      'true',
-      'by-height',
-      'height',
-    ].includes(rawSheetWidthPriority)) {
-      normalized.sheetWidthPriority = 'by-height';
-    } else if (!(rawSheetWidthPriority in SHEET_WIDTH_PRIORITY_WEIGHTS)) {
-      normalized.sheetWidthPriority = SETTINGS_DEFAULTS.sheetWidthPriority;
-    } else {
-      normalized.sheetWidthPriority = rawSheetWidthPriority;
+    if (!MULTI_SHEET_STRATEGIES.includes(normalized.multiSheetStrategy)) {
+      normalized.multiSheetStrategy = SETTINGS_DEFAULTS.multiSheetStrategy;
     }
 
     const engravingLayerRaw = normalized.engravingLayer;
@@ -132,6 +160,8 @@
     SETTINGS_DEFAULTS,
     SKETCH_CONTOUR_METHODS,
     SHEET_WIDTH_PRIORITY_WEIGHTS,
+    MULTI_SHEET_STRATEGIES,
+    MULTI_SHEET_STRATEGY_OPTIONS,
     PREFERRED_ALIGNMENTS,
     normalizeSettings,
   };

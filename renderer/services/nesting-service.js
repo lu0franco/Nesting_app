@@ -13,9 +13,11 @@
       syncExportButton,
     }) {
       const {
-        SHEET_WIDTH_PRIORITY_WEIGHTS = {
-          'by-width': 0.0,
-          'by-height': 1.0,
+        MULTI_SHEET_STRATEGY_OPTIONS = {
+          'auto': { multiStripMode: 'barriers', bucketFillWeight: null },
+          'by-height': { multiStripMode: 'prebucket', bucketFillWeight: 1.0 },
+          'by-length': { multiStripMode: 'prebucket', bucketFillWeight: 0.0 },
+          'by-height-or-length': { multiStripMode: 'prebucket', bucketFillWeight: null },
         },
       } = globalScope.NestSettings || {};
       let nestInterval = null;
@@ -73,10 +75,17 @@
         state.nestResult = result.summary;
         if (result.inputPath) state.nestInputPath = result.inputPath;
 
-        // While Sparrow is still adding sheets one by one, automatically
-        // follow the newest strip so the user sees the sheet currently being
-        // populated instead of staying pinned to an older tab.
-        if (state.nestResult.strips.length > previousCount) {
+        if (previousCount === 0) {
+          // First time strips become available this run. Default to sheet 1
+          // so the user lands on the natural starting point. (Barrier mode
+          // loads every sheet on the first poll, so without this guard the
+          // newest-strip auto-follow below would jump straight to the last
+          // tab.)
+          state.activeStripIndex = 0;
+        } else if (state.nestResult.strips.length > previousCount) {
+          // Pre-bucket mode: Sparrow finishes one sheet at a time. Follow
+          // the newest one so the user sees the sheet currently being
+          // populated instead of staying pinned to an older tab.
           state.activeStripIndex = state.nestResult.strips.length - 1;
         } else if (!state.nestResult.strips[previousIndex]) {
           state.activeStripIndex = 0;
@@ -172,10 +181,15 @@
         try {
           const primarySheet = state.sheets[0] || {};
           const settings = getCurrentNestingSettings();
-          const bucketFillWeight = SHEET_WIDTH_PRIORITY_WEIGHTS[
-            String(settings.sheetWidthPriority || '').toLowerCase()
-          ];
           const partSpacing = Number(settings.partSpacing) || 0;
+          // Single multi-sheet strategy drives both the placement algorithm
+          // (`multiStripMode`) and, for the legacy bucketed paths, the
+          // bucket fill weight. `bucketFillWeight: null` means "omit from
+          // the CLI" — handled by the spread below.
+          const strategyKey = String(settings.multiSheetStrategy || 'auto').toLowerCase();
+          const strategy = MULTI_SHEET_STRATEGY_OPTIONS[strategyKey]
+            || MULTI_SHEET_STRATEGY_OPTIONS['auto'];
+          const { multiStripMode, bucketFillWeight } = strategy;
           const sparrowOptions = {
             globalTime: Number(settings.timeLimit) || 60,
             rngSeed: 42,
@@ -185,6 +199,7 @@
             minItemSeparation: partSpacing,
             exactCoedge: partSpacing === 0,
             align: String(settings.preferredAlignment || 'top'),
+            multiStripMode,
             ...(Number.isFinite(bucketFillWeight) ? { bucketFillWeight } : {}),
           };
           const result = await window.electronAPI.runSparrow(exported.payload, sparrowOptions);
