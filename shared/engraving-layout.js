@@ -266,10 +266,58 @@
     return null;
   }
 
+  // Number of trailing alphanumeric characters each "last N" style keeps.
+  // The extraction caps at the trailing alphanumeric run's length, so a
+  // part with a single-character suffix never grows extra characters.
+  const TRAILING_STYLE_LENGTHS = {
+    'last-digit': 1,
+    'last-two-digits': 2,
+  };
+
+  /**
+   * Resolves the actual text that should be engraved for a given part label,
+   * based on the user-selected engraving style.
+   *
+   * - `'simple'` and `'stroked'` keep the full label text and only differ in
+   *   visual style (single-line strokes vs outlined glyphs).
+   * - `'last-digit'` and `'last-two-digits'` truncate the label to the last
+   *   1 or 2 characters of its trailing alphanumeric run — digits *or*
+   *   letters. So `44924_1` engraves as `1` for both styles (only one char
+   *   available), `part_23` engraves as `3` / `23`, `frame-bc` engraves as
+   *   `c` / `bc`, and `part_v2` engraves as `2` / `v2`.
+   * - Separators (`_`, `-`, `.`, etc.) at the end are skipped — they're not
+   *   counted toward the N characters and never appear in the engraving.
+   * - Labels without any trailing alphanumeric character fall through to
+   *   the full text so the engraving is never blank.
+   *
+   * The value names stay `last-digit` / `last-two-digits` for back-compat
+   * with previously-saved settings even though they now match letters too.
+   */
+  function engravingLabelText(text, style) {
+    const str = String(text || '');
+    const maxChars = TRAILING_STYLE_LENGTHS[style];
+    if (!maxChars) return str;
+    const match = str.match(/([a-z0-9]+)[^a-z0-9]*$/i);
+    if (!match) return str;
+    return match[1].slice(-maxChars);
+  }
+
+  /**
+   * Maps an engraving style to the visual style key used by the renderer
+   * (`'simple'` or `'stroked'`). `'last-digit'` always renders as simple
+   * single-line strokes because outlined glyphs would be visually noisy
+   * for one or two characters.
+   */
+  function engravingVisualStyle(style) {
+    return style === 'stroked' ? 'stroked' : 'simple';
+  }
+
   const api = {
     DEFAULT_LAYOUT,
     sanitizeLabelText,
     layoutEngravingLabel,
+    engravingLabelText,
+    engravingVisualStyle,
   };
 
   if (typeof module !== 'undefined' && module.exports) {

@@ -210,10 +210,14 @@ function resolveEngravingColor(layers = []) {
   return DEFAULT_ENGRAVING_COLOR;
 }
 
-// Returns whether labels should be drawn as simple centred text or as stroked
-// outlines — controlled by the "Engraving style" setting.
+// Returns the engraving style: 'simple' (single-line), 'stroked' (outlined),
+// or 'last-digit' (only the trailing digit run of the part name, rendered as
+// simple single-line strokes). Unknown values fall back to 'stroked'.
 function engravingStyle(settings = currentNestingSettings()) {
-  return settings?.engravingStyle === 'simple' ? 'simple' : 'stroked';
+  const raw = settings?.engravingStyle;
+  if (raw === 'simple' || raw === 'stroked'
+      || raw === 'last-digit' || raw === 'last-two-digits') return raw;
+  return 'stroked';
 }
 
 // DXF service — parses DXF files into shape data and builds the JSON payload

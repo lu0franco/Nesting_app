@@ -5,6 +5,8 @@
   const {
     layoutEngravingLabel,
     DEFAULT_LAYOUT: ENGRAVING_LAYOUT_DEFAULTS = { charAdvance: 1.25 },
+    engravingLabelText = (t) => String(t || ''),
+    engravingVisualStyle = (s) => (s === 'stroked' ? 'stroked' : 'simple'),
   } = global.NestEngravingLayout || {};
 
   // These glyph maps intentionally stay verbose here so the preview/export
@@ -186,6 +188,15 @@
   // the filled-outline style and the lightweight stroke-only style via `style`.
   function buildPreviewLabelSvg(text, bbox, color, style, outerPolygon = null, holes = []) {
     if (!bbox || !Number.isFinite(bbox.w) || !Number.isFinite(bbox.h)) return '';
+    // Apply style-driven text transforms here (e.g. `'last-digit'` extracts
+    // the trailing digit run) before layout so the engraving size is
+    // calculated against the actual rendered characters.
+    const engravedText = engravingLabelText(text, style);
+    if (!engravedText) return '';
+    // The remainder of the function only cares about how to *draw* each
+    // glyph — translate `'last-digit'` (a content option) into the visual
+    // style it should be rendered with.
+    const visualStyle = engravingVisualStyle(style);
     const fallbackOuter = [
       { x: 0, y: 0 },
       { x: bbox.w, y: 0 },
@@ -194,7 +205,7 @@
     ];
     const layout = typeof layoutEngravingLabel === 'function'
       ? layoutEngravingLabel({
-        text,
+        text: engravedText,
         outerPolygon: Array.isArray(outerPolygon) && outerPolygon.length >= 3 ? outerPolygon : fallbackOuter,
         holes,
       })
@@ -214,7 +225,7 @@
 
     chars.forEach((ch, index) => {
       const ox = startX + index * charW * ENGRAVING_LAYOUT_DEFAULTS.charAdvance;
-      if (style === 'stroked') {
+      if (visualStyle === 'stroked') {
         const loops = LABEL_OUTLINE_FONT[ch];
         if (Array.isArray(loops) && loops.length) {
           loops.forEach(loop => {
@@ -225,7 +236,7 @@
         }
       }
       const strokes = LABEL_STROKE_FONT[ch] || [];
-      const strokeWidth = style === 'simple' ? Math.max(0.8, charH * 0.055) : Math.max(0.8, charH * 0.07);
+      const strokeWidth = visualStyle === 'simple' ? Math.max(0.8, charH * 0.055) : Math.max(0.8, charH * 0.07);
       strokes.forEach(([a, b]) => parts.push(lineSvg(a, b, ox, strokeWidth, 0.96)));
     });
 

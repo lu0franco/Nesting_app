@@ -127,7 +127,7 @@
       normalized.exportFormat = SETTINGS_DEFAULTS.exportFormat;
     }
 
-    if (!['simple', 'stroked'].includes(normalized.engravingStyle)) {
+    if (!['simple', 'stroked', 'last-digit', 'last-two-digits'].includes(normalized.engravingStyle)) {
       normalized.engravingStyle = SETTINGS_DEFAULTS.engravingStyle;
     }
 

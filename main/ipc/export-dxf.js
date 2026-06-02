@@ -6,6 +6,8 @@ const { withSecurityScopedAccess } = require('../utils/security-scoped-bookmarks
 const {
   layoutEngravingLabel,
   DEFAULT_LAYOUT: ENGRAVING_LAYOUT_DEFAULTS,
+  engravingLabelText,
+  engravingVisualStyle,
 } = require('../../shared/engraving-layout');
 
 function registerExportDxfIpc() {
@@ -414,8 +416,13 @@ function registerExportDxfIpc() {
       };
 
       function buildStrokeLabelEntities(text, layerName, placedPolygon, placedHoles = []) {
+        // Apply the style-driven text transform before layout so the
+        // engraving sizing reflects the actual rendered characters (in
+        // `'last-digit'` mode that's just one or two glyphs).
+        const engravedText = engravingLabelText(text, exportSettings.engravingStyle);
+        if (!engravedText) return [];
         const layout = layoutEngravingLabel({
-          text,
+          text: engravedText,
           outerPolygon: placedPolygon,
           holes: placedHoles,
         });
@@ -423,7 +430,9 @@ function registerExportDxfIpc() {
 
         const { chars, charH, charW, startX, baseY } = layout;
         const entities = [];
-        const style = exportSettings.engravingStyle === 'simple' ? 'simple' : 'stroked';
+        // `'last-digit'` is a content option, not a visual style — drop
+        // through to simple single-line strokes for the actual rendering.
+        const style = engravingVisualStyle(exportSettings.engravingStyle);
         const glyphPoint = (point, ox) => ({
           x: +(ox + point[0] * charW).toFixed(4),
           y: +(baseY + (1 - point[1]) * charH).toFixed(4),
