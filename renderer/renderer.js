@@ -83,9 +83,13 @@ const dom = {
 const { state, schedulePersistJobState, hydrateJobState } = window.NestStore.createAppStore();
 const { DEFAULT_ENGRAVING_COLOR } = window.NestConstants;
 const { partLabelFromName } = window.NestHelpers;
+const customSelectsApi = window.NestCustomSelects?.createModalCustomSelects?.() || null;
+const linuxAppMenuApi = window.NestLinuxAppMenu?.createLinuxAppMenu?.() || null;
 const FEEDBACK_BANNER_STORAGE_KEY = 'kenzap.feedback-banner.dismissedAt.v2';
+const FEEDBACK_BANNER_FIRST_SEEN_KEY = 'kenzap.feedback-banner.firstSeenAt.v1';
 const FEEDBACK_SUPPORT_URL = 'https://kenzap.com/nesting-support/';
 const FEEDBACK_BANNER_COOLDOWN_MS = 60 * 24 * 60 * 60 * 1000;
+const FEEDBACK_BANNER_FIRST_SHOW_DELAY_MS = 14 * 24 * 60 * 60 * 1000;
 
 // Timer used to auto-clear drag-debug messages after a few seconds.
 let dragDebugTimer = null;
@@ -143,23 +147,33 @@ function openFeedbackUrl() {
 
 function bindFeedbackBanner() {
   if (!dom.feedbackBanner || !dom.feedbackBannerAction || !dom.feedbackBannerClose) return;
+  let showBanner = true;
   let dismissed = false;
   try {
+    const now = Date.now();
+    const firstSeenRaw = window.localStorage?.getItem(FEEDBACK_BANNER_FIRST_SEEN_KEY);
+    let firstSeenAt = Number(firstSeenRaw);
+    if (!Number.isFinite(firstSeenAt) || firstSeenAt <= 0) {
+      firstSeenAt = now;
+      window.localStorage?.setItem(FEEDBACK_BANNER_FIRST_SEEN_KEY, String(firstSeenAt));
+    }
+
     const rawValue = window.localStorage?.getItem(FEEDBACK_BANNER_STORAGE_KEY);
     if (rawValue) {
       const dismissedAt = Number(rawValue);
       if (Number.isFinite(dismissedAt) && dismissedAt > 0) {
-        dismissed = (Date.now() - dismissedAt) < FEEDBACK_BANNER_COOLDOWN_MS;
+        dismissed = (now - dismissedAt) < FEEDBACK_BANNER_COOLDOWN_MS;
       } else {
         // Migrate any older non-timestamp value into a fresh cooldown window.
-        window.localStorage?.setItem(FEEDBACK_BANNER_STORAGE_KEY, String(Date.now()));
+        window.localStorage?.setItem(FEEDBACK_BANNER_STORAGE_KEY, String(now));
         dismissed = true;
       }
     }
+    showBanner = !dismissed && (now - firstSeenAt) >= FEEDBACK_BANNER_FIRST_SHOW_DELAY_MS;
   } catch {
-    dismissed = false;
+    showBanner = false;
   }
-  setFeedbackBannerVisible(!dismissed);
+  setFeedbackBannerVisible(showBanner);
 
   dom.feedbackBannerAction.addEventListener('click', () => {
     openFeedbackUrl();
@@ -529,6 +543,8 @@ function bindOverlayClose() {
   bindOverlayClose();
   bindExplicitListScroll(dom.fileList);
   bindExplicitListScroll(dom.sheetList);
+  customSelectsApi?.enhanceModalSelects?.();
+  linuxAppMenuApi?.bind?.();
 
   await settingsModalApi.loadPersistedSettings();
   exportServiceApi.loadLastExportFolder();

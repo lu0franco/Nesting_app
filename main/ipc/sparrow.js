@@ -90,6 +90,14 @@ function readJsonIfExists(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 }
 
+function readLiveManifestIfExists(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  const match = raw.match(/window\.__SPARROW_LIVE_MANIFEST\s*=\s*(\{[\s\S]*\})\s*;/);
+  if (!match) return null;
+  return JSON.parse(match[1]);
+}
+
 function countPlacedItemsInSvg(svgText) {
   const text = String(svgText || '');
   const matches = text.match(/<use\b[^>]*href="#item_[^"]+"/g);
@@ -186,6 +194,72 @@ function collectContinuousFinalArtifacts(outputDir, safeName) {
   };
 }
 
+function collectLiveArtifacts(runDir, safeName) {
+  const liveDir = path.join(runDir, 'data', 'live');
+  if (!fs.existsSync(liveDir)) return null;
+
+  const manifestPath = path.join(liveDir, '.live_manifest.js');
+  const manifest = readLiveManifestIfExists(manifestPath);
+  if (manifest?.mode === 'multi_strip' && Array.isArray(manifest.strips) && manifest.strips.length) {
+    const strips = manifest.strips
+      .map(strip => {
+        const relativeSvgPath = String(strip.svg_path || '').trim();
+        if (!relativeSvgPath) return null;
+        const svgPath = path.resolve(liveDir, relativeSvgPath);
+        if (!fs.existsSync(svgPath)) return null;
+        const svgText = fs.readFileSync(svgPath, 'utf-8');
+        return {
+          index: Number(strip.index) || 0,
+          svg_path: svgPath,
+          json_path: null,
+          svg: svgText,
+          strip_width: Number.isFinite(Number(strip.strip_width)) ? Number(strip.strip_width) : null,
+          density: Number.isFinite(Number(strip.density)) ? Number(strip.density) : null,
+          item_count: countPlacedItemsInSvg(svgText),
+          state: strip.state || null,
+          is_preview: true,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.index - b.index);
+
+    if (!strips.length) return null;
+    return {
+      summaryPath: manifestPath,
+      summary: {
+        name: manifest.name || safeName,
+        strip_count: Number(manifest.strip_count) || strips.length,
+        current_strip: Number.isFinite(Number(manifest.current_strip)) ? Number(manifest.current_strip) : null,
+        strips,
+        is_preview: true,
+      },
+    };
+  }
+
+  const singleLiveSvgPath = path.join(liveDir, '.live_solution.svg');
+  if (fs.existsSync(singleLiveSvgPath)) {
+    const svgText = fs.readFileSync(singleLiveSvgPath, 'utf-8');
+    return {
+      summaryPath: singleLiveSvgPath,
+      summary: {
+        name: safeName,
+        strip_count: 1,
+        strips: [{
+          index: 1,
+          svg_path: singleLiveSvgPath,
+          json_path: null,
+          svg: svgText,
+          item_count: countPlacedItemsInSvg(svgText),
+          is_preview: true,
+        }],
+        is_preview: true,
+      },
+    };
+  }
+
+  return null;
+}
+
 function resolveOutputSubdir(runDir, preferredName, prefix) {
   const preferredPath = path.join(runDir, 'output', preferredName);
   if (fs.existsSync(preferredPath)) return preferredPath;
@@ -262,6 +336,49 @@ function collectSparrowArtifacts(runDir, safeName) {
       strip_count: strips.length,
       strips,
       is_preview: false,
+    } : null,
+  };
+}
+
+function markArtifactsAsPreview(artifacts) {
+  if (!artifacts?.summary) return artifacts;
+  return {
+    ...artifacts,
+    summary: {
+      ...artifacts.summary,
+      is_preview: true,
+      strips: Array.isArray(artifacts.summary.strips)
+        ? artifacts.summary.strips.map(strip => ({ ...strip, is_preview: true }))
+        : [],
+    },
+  };
+}
+
+function collectRunningSparrowArtifacts(runDir, safeName) {
+  try {
+    const liveArtifacts = collectLiveArtifacts(runDir, safeName);
+    if (liveArtifacts?.summary?.strips?.length) return liveArtifacts;
+  } catch {
+    // Ignore transient live-preview read failures while Sparrow is still writing files.
+  }
+
+  try {
+    const artifacts = collectSparrowArtifacts(runDir, safeName);
+    if (artifacts?.summary?.strips?.length) {
+      return markArtifactsAsPreview(artifacts);
+    }
+  } catch {
+    // Ignore transient parse/read failures while Sparrow is still writing files.
+  }
+
+  const strips = latestSvgPerStrip(runDir, safeName);
+  return {
+    summaryPath: null,
+    summary: strips.length ? {
+      name: safeName,
+      strip_count: strips.length,
+      strips,
+      is_preview: true,
     } : null,
   };
 }
@@ -471,18 +588,7 @@ function registerSparrowIpc() {
 
     const status = activeSparrowRun.status;
     const artifacts = status === 'running'
-      ? {
-          summaryPath: null,
-          summary: (() => {
-            const strips = latestSvgPerStrip(activeSparrowRun.runDir, activeSparrowRun.safeName);
-            return strips.length ? {
-              name: activeSparrowRun.safeName,
-              strip_count: strips.length,
-              strips,
-              is_preview: true,
-            } : null;
-          })(),
-        }
+      ? collectRunningSparrowArtifacts(activeSparrowRun.runDir, activeSparrowRun.safeName)
       : collectSparrowArtifacts(activeSparrowRun.runDir, activeSparrowRun.safeName);
     const error = status === 'error'
       ? (activeSparrowRun.stderr.trim() || activeSparrowRun.stdout.trim() || activeSparrowRun.error || 'Sparrow failed')

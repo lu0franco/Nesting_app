@@ -32,6 +32,7 @@
         return;
       }
       field.value = `${value}`;
+      if (typeof field._syncCustomSelect === 'function') field._syncCustomSelect();
     }
 
     // Reads every [data-setting-key] field in the modal at once and returns them as a plain object.

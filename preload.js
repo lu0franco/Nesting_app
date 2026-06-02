@@ -1,5 +1,13 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
+const PRODUCT_NAME = 'Kenzap Nesting';
+const APP_DESCRIPTION = 'DXF nesting desktop application with live preview and production DXF export.';
+const WEBSITE_URL = 'https://kenzap.com/nesting/';
+const SUPPORT_URL = 'https://kenzap.com/nesting-support/';
+const RELEASES_URL = 'https://github.com/kenzap/nesting-app/releases';
+const REDDIT_URL = 'https://www.reddit.com/r/kenzap/';
+const LINKEDIN_URL = 'https://www.linkedin.com/company/kenzap';
+
 contextBridge.exposeInMainWorld('electronAPI', {
   openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
   getPathForDroppedFile: (file) => {
@@ -12,6 +20,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
   parseDXF:       (filePath, bookmark = null) => ipcRenderer.invoke('parse-dxf', { filePath, bookmark }),
   savePlacementJSON: (payload) => ipcRenderer.invoke('save-placement-json', payload),
   openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
+  appMenuAction: (action) => ipcRenderer.invoke('app-menu-action', action),
+  getAppMeta: async () => {
+    try {
+      const result = await ipcRenderer.invoke('get-app-meta');
+      if (result?.success && result.meta) return result;
+    } catch {
+      // Fall through to local defaults when the handler is unavailable.
+    }
+
+    return {
+      success: true,
+      meta: {
+        productName: PRODUCT_NAME,
+        description: APP_DESCRIPTION,
+        version: '',
+        websiteUrl: WEBSITE_URL,
+        supportUrl: SUPPORT_URL,
+        releasesUrl: RELEASES_URL,
+        redditUrl: REDDIT_URL,
+        linkedInUrl: LINKEDIN_URL,
+      },
+    };
+  },
   loadAppSettings: () => ipcRenderer.invoke('load-app-settings'),
   saveAppSettings: (settings) => ipcRenderer.invoke('save-app-settings', settings),
   loadJobState: () => ipcRenderer.invoke('load-job-state'),

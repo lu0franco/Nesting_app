@@ -25,6 +25,7 @@
     function resetSheetForm() {
       state.editingSheetId = null;
       dom.sheetWidthMode.value = 'fixed';
+      if (typeof dom.sheetWidthMode._syncCustomSelect === 'function') dom.sheetWidthMode._syncCustomSelect();
       dom.sheetHeight.value = '1250';
       dom.sheetWidth.value = '3000';
       dom.sheetMaterial.value = '';
@@ -47,6 +48,7 @@
 
       state.editingSheetId = sheet.id;
       dom.sheetWidthMode.value = sheet.widthMode || 'fixed';
+      if (typeof dom.sheetWidthMode._syncCustomSelect === 'function') dom.sheetWidthMode._syncCustomSelect();
       dom.sheetHeight.value = sheet.height ?? 1250;
       dom.sheetWidth.value = sheet.width ?? 3000;
       dom.sheetMaterial.value = sheet.material || '';
@@ -94,6 +96,7 @@
       document.querySelectorAll('.preset-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           dom.sheetWidthMode.value = 'fixed';
+          if (typeof dom.sheetWidthMode._syncCustomSelect === 'function') dom.sheetWidthMode._syncCustomSelect();
           dom.sheetWidth.value = btn.dataset.w;
           dom.sheetHeight.value = btn.dataset.h;
           updateSheetModeControls();

@@ -132,18 +132,18 @@
       "allowToChangeInstallationDirectory": true
     },
     "snap": {
+      "allowNativeWayland": true,
       "confinement": "strict",
       "grade": "stable",
-      "allowNativeWayland": true,
       "plugs": [
-        "desktop",
-        "desktop-legacy",
-        "home",
-        "network",
-        "opengl",
+        "default",
         "removable-media",
-        "wayland",
-        "x11"
+        {
+          "shared-memory": {
+            "interface": "shared-memory",
+            "private": true
+          }
+        }
       ]
     }
   }

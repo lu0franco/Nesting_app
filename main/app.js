@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, shell } = require('electron');
+const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
 const packageJson = require('../package.json');
 
@@ -11,6 +11,7 @@ const REDDIT_URL = 'https://www.reddit.com/r/kenzap/';
 const LINKEDIN_URL = 'https://www.linkedin.com/company/kenzap';
 
 let mainWindow = null;
+let appMenuIpcRegistered = false;
 
 function configureAppMetadata() {
   app.setName(productName);
@@ -24,6 +25,11 @@ function configureAppMetadata() {
 }
 
 function buildApplicationMenu({ isDevMode = false } = {}) {
+  if (process.platform === 'linux') {
+    Menu.setApplicationMenu(null);
+    return;
+  }
+
   const viewSubmenu = [
     { role: 'resetZoom' },
     { role: 'zoomIn' },
@@ -132,14 +138,74 @@ function buildApplicationMenu({ isDevMode = false } = {}) {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+function registerAppMenuIpc() {
+  if (appMenuIpcRegistered) return;
+  appMenuIpcRegistered = true;
+
+  ipcMain.handle('get-app-meta', async () => ({
+    success: true,
+    meta: {
+      productName,
+      description: appDescription,
+      version: packageJson.version,
+      websiteUrl: WEBSITE_URL,
+      supportUrl: SUPPORT_URL,
+      releasesUrl: RELEASES_URL,
+      redditUrl: REDDIT_URL,
+      linkedInUrl: LINKEDIN_URL,
+    },
+  }));
+
+  ipcMain.handle('app-menu-action', async (event, action) => {
+    try {
+      const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+      switch (String(action || '')) {
+        case 'about':
+          app.showAboutPanel();
+          break;
+        case 'quit':
+          app.quit();
+          break;
+        case 'close-window':
+          win?.close();
+          break;
+        case 'minimize-window':
+          win?.minimize();
+          break;
+        case 'toggle-maximize-window':
+          if (!win) break;
+          if (win.isMaximized()) win.unmaximize();
+          else win.maximize();
+          break;
+        case 'toggle-fullscreen':
+          if (win) win.setFullScreen(!win.isFullScreen());
+          break;
+        case 'zoom-in':
+          win?.webContents.zoomIn();
+          break;
+        case 'zoom-out':
+          win?.webContents.zoomOut();
+          break;
+        case 'reset-zoom':
+          win?.webContents.setZoomLevel(0);
+          break;
+        default:
+          return { success: false, error: `Unknown app menu action: ${action}` };
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+}
+
 function createWindow({ isDevMode = false } = {}) {
   const windowIcon = path.join(__dirname, '..', 'assets', 'icon-square.png');
-  mainWindow = new BrowserWindow({
+  const windowOptions = {
     width: 1280,
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    titleBarStyle: 'hiddenInset',
     backgroundColor: '#0f1117',
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),
@@ -147,7 +213,13 @@ function createWindow({ isDevMode = false } = {}) {
       nodeIntegration: false,
     },
     icon: windowIcon,
-  });
+  };
+
+  if (process.platform === 'darwin') {
+    windowOptions.titleBarStyle = 'hiddenInset';
+  }
+
+  mainWindow = new BrowserWindow(windowOptions);
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   mainWindow.webContents.on('will-navigate', (event) => {
@@ -184,4 +256,5 @@ function getMainWindow() {
 module.exports = {
   initializeApp,
   getMainWindow,
+  registerAppMenuIpc,
 };
