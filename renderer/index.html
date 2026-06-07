@@ -165,6 +165,13 @@
           </div>
         </div>
         <div class="setting-row">
+          <label>Random seed</label>
+          <div class="input-with-unit">
+            <input type="number" value="42" min="0" step="1" data-setting-key="rngSeed" />
+            <span class="unit">seed</span>
+          </div>
+        </div>
+        <div class="setting-row">
           <label title="Only applies when running placements on multiple sheets. Auto uses the unified barrier-mode packer — recommended for most jobs. The bucketed options run the legacy planner that partitions items into per-sheet buckets up-front.">Multi-sheet strategy</label>
           <select data-setting-key="multiSheetStrategy">
             <option value="auto" selected>Auto</option>

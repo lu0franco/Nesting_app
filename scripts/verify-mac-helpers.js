@@ -6,7 +6,7 @@ const { execFileSync } = require('child_process');
 
 const repoRoot = path.resolve(__dirname, '..');
 const helperDir = path.join(repoRoot, 'native', 'macos', 'bin');
-const helperNames = ['sparrow', 'dxf_preprocess'];
+const helperNames = ['sparrow'];
 
 function fail(message) {
   console.error(`[mac-helpers] ${message}`);

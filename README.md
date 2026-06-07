@@ -4,9 +4,10 @@
 
 A desktop nesting application for DXF-based sheet and strip layouts, with live preview, built-in state-of-the-art 2D nesting algorithm, DXF sheet export, engraving, and cross-platform support.
 
-## Downloads
+## Downloads (Official)
 
-- [Windows x64](https://apps.microsoft.com/detail/9nbr7z0phs02?hl=en-US&gl=EN)
+- [Windows](https://apps.microsoft.com/detail/9nbr7z0phs02?hl=en-US&gl=EN)
+- [Ubuntu](https://snapcraft.io/kenzap-nesting)
 
 Download stable release from the official store.
 
@@ -64,6 +65,7 @@ More info:
 - Node.js
 - npm
 - Native algorithm binaries placed under:
+  - `native/linux/bin/`
   - `native/macos/bin/`
   - `native/windows/bin/`
 
@@ -167,6 +169,7 @@ main/                   Electron main-process modules
   ipc/                  file dialogs, Sparrow, DXF export IPC handlers
   utils/                main-process helpers such as temp retention cleanup
 native/                 platform-specific native binaries
+  linux/bin/            Sparrow and preprocess binaries for Ubuntu
   macos/bin/            Sparrow and preprocess binaries for macOS
   windows/bin/          Sparrow and preprocess binaries for Windows
 renderer/               Electron renderer application
@@ -188,7 +191,7 @@ dist/                   packaged builds
 
 Kenzap Nesting is designed for practical DXF nesting workflows:
 
-- Accurate multi-contour import
+- Common Line Cutting
 - Format-agnostic support
 - Brand-specific machined tool path integration
 - Cloud integration for superior nesting performance

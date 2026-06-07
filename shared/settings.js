@@ -48,6 +48,7 @@
     earlyStopping: true,
     preferredAlignment: 'top',
     timeLimit: 60,
+    rngSeed: 42,
     exportFormat: 'dxf',
     engravingLayer: '2',
     engravingStyle: 'simple',
@@ -150,6 +151,7 @@
     }
 
     normalized.timeLimit = Math.max(10, Number(normalized.timeLimit) || SETTINGS_DEFAULTS.timeLimit);
+    normalized.rngSeed = Math.max(0, Math.trunc(Number(normalized.rngSeed) || SETTINGS_DEFAULTS.rngSeed));
     normalized.partSpacing = Math.max(0, Number(normalized.partSpacing) || 0);
     normalized.sheetMargin = Math.max(0, Number(normalized.sheetMargin) || 0);
 

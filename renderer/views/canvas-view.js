@@ -277,8 +277,10 @@
     }
 
     // Generates a fake placement SVG from the currently loaded files and sheet config.
-    // This keeps the canvas looking populated while the real solver is running,
-    // rather than showing an empty viewport.
+    // Used only before a real nesting result exists; once Sparrow has started
+    // returning strips we must never swap this in for a sheet whose SVG is still
+    // being written, otherwise the user sees a brief fake "placeholder placement"
+    // before the real preview arrives.
     function generateMockNestSVG(sheetIndex) {
       const sheet = state.sheets[sheetIndex];
       if (!sheet) return null;
@@ -387,8 +389,8 @@
     // during barrier-mode optimization, which re-centers the viewport and
     // makes pan/zoom feel jittery.
     function showNestResult(sheetIndex) {
-      if (state.nestResult?.strips?.[sheetIndex]?.svg) {
-        const strip = state.nestResult.strips[sheetIndex];
+      const strip = state.nestResult?.strips?.[sheetIndex] || null;
+      if (strip?.svg) {
         const sheet = currentSheetConfig();
         state.activeStripIndex = sheetIndex;
         const styled = styleStripSVG(strip.svg, strip);
@@ -418,6 +420,15 @@
         // no-op call to `applyZoom(true)` still resets scrollLeft/scrollTop,
         // which is exactly what we want to avoid on same-sheet re-polls.
         if (!sameSvg) applyZoom(true);
+        return;
+      }
+
+      if (strip) {
+        state.activeStripIndex = sheetIndex;
+        const totalSheets = state.nestResult?.strips?.length || state.nestResult?.strip_count || 0;
+        const waitingPrefix = strip.is_preview || state.nestResult?.is_preview ? 'Preview · ' : '';
+        setNestStatsTone('');
+        dom.nestStats.textContent = `${waitingPrefix}Sheet ${sheetIndex + 1} of ${totalSheets} · Waiting for geometry`;
         return;
       }
 

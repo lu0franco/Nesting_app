@@ -363,6 +363,28 @@ function collectRunningSparrowArtifacts(runDir, safeName) {
   }
 
   try {
+    // Barrier-mode builds on some platforms emit only intermediate strip SVGs
+    // under output/sols_* while the run is active, even though the final_*
+    // directory already exists. Probe those first so the UI can stream
+    // per-strip progress instead of waiting for the completed summary.
+    const strips = latestSvgPerStrip(runDir, safeName);
+    if (strips.length) {
+      return {
+        summaryPath: null,
+        summary: {
+          name: safeName,
+          strip_count: strips.length,
+          strips,
+          is_preview: true,
+        },
+      };
+    }
+  } catch {
+    // Ignore transient intermediate-preview read failures while Sparrow is
+    // still writing files.
+  }
+
+  try {
     const artifacts = collectSparrowArtifacts(runDir, safeName);
     if (artifacts?.summary?.strips?.length) {
       return markArtifactsAsPreview(artifacts);
@@ -371,15 +393,9 @@ function collectRunningSparrowArtifacts(runDir, safeName) {
     // Ignore transient parse/read failures while Sparrow is still writing files.
   }
 
-  const strips = latestSvgPerStrip(runDir, safeName);
   return {
     summaryPath: null,
-    summary: strips.length ? {
-      name: safeName,
-      strip_count: strips.length,
-      strips,
-      is_preview: true,
-    } : null,
+    summary: null,
   };
 }
 
@@ -425,7 +441,6 @@ function registerSparrowIpc() {
     try {
       const baseDir = nativeBaseDir();
       const sparrowPath = resolveNativeExecutable('sparrow');
-      const dxfPreprocessPath = resolveNativeExecutable('dxf_preprocess');
 
       return {
         success: true,
@@ -433,10 +448,8 @@ function registerSparrowIpc() {
         packaged: app.isPackaged,
         baseDir,
         sparrowPath,
-        dxfPreprocessPath,
         exists: {
           sparrow: fs.existsSync(sparrowPath),
-          dxfPreprocess: fs.existsSync(dxfPreprocessPath),
         },
       };
     } catch (err) {

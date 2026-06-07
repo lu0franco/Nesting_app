@@ -15,7 +15,9 @@
     "install:appx-test": "powershell -ExecutionPolicy Bypass -File scripts/install-appx-test-package.ps1",
     "verify:mas-signing": "node scripts/verify-mas-signing.js",
     "dist:mac": "npm run preflight:mac-helpers && electron-builder --mac dmg zip",
+    "dist:mas-app": "npm run preflight:mac-helpers && electron-builder --mac mas --dir",
     "dist:mas": "npm run preflight:mac-helpers && electron-builder --mac mas",
+    "dist:mas-dev-app": "npm run preflight:mac-helpers && electron-builder --mac mas-dev --dir",
     "dist:mas-dev": "npm run preflight:mac-helpers && electron-builder --mac mas-dev",
     "dist:snap": "npm run preflight:linux-helpers && electron-builder --linux snap",
     "dist:win": "npm run preflight:win-helpers && electron-builder --win nsis",
@@ -69,19 +71,21 @@
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "mac": {
+      "extendInfo": {
+        "ElectronTeamID": "BY6WQ9N45R"
+      },
+      "minimumSystemVersion": "12.0.0",
       "extraFiles": [
         {
           "from": "native/macos/bin",
           "to": "Helpers",
           "filter": [
-            "sparrow",
-            "dxf_preprocess"
+            "sparrow"
           ]
         }
       ],
       "binaries": [
-        "Contents/Helpers/sparrow",
-        "Contents/Helpers/dxf_preprocess"
+        "Contents/Helpers/sparrow"
       ],
       "icon": "assets/icon-square.icns"
     },
@@ -105,11 +109,13 @@
     },
     "mas": {
       "type": "distribution",
+      "preAutoEntitlements": false,
       "entitlements": "build/entitlements.mas.plist",
       "entitlementsInherit": "build/entitlements.mas.inherit.plist"
     },
     "masDev": {
       "type": "development",
+      "preAutoEntitlements": false,
       "entitlements": "build/entitlements.mas.plist",
       "entitlementsInherit": "build/entitlements.mas.inherit.plist"
     },

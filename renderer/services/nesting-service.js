@@ -192,7 +192,7 @@
           const { multiStripMode, bucketFillWeight } = strategy;
           const sparrowOptions = {
             globalTime: Number(settings.timeLimit) || 60,
-            rngSeed: 42,
+            rngSeed: Number.isFinite(Number(settings.rngSeed)) ? Math.trunc(Number(settings.rngSeed)) : 42,
             earlyTermination: !!settings.earlyStopping,
             maxStripLength: primarySheet.widthMode === 'unlimited' ? null : Number(primarySheet.width) || null,
             stripMargin: Number(settings.sheetMargin) || 0,
