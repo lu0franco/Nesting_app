@@ -187,6 +187,10 @@
       if (!svg) return '';
 
       let styled = svg;
+      // Solver debug overlays such as collision guides are useful for
+      // diagnostics, but they clutter the end-user preview and can flash
+      // prominently during live updates. Remove them from the in-app SVG only.
+      styled = styled.replace(/<g\b[^>]*id="collision_lines"[^>]*>[\s\S]*?<\/g>/gi, '');
       const sheet = currentSheetConfig();
       const targetWidth = strip ? displayStripWidth(strip, sheet) : null;
       if (targetWidth) {
