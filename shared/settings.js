@@ -49,6 +49,7 @@
     preferredAlignment: 'top',
     timeLimit: 60,
     rngSeed: 42,
+    workers: 3,
     exportFormat: 'dxf',
     engravingLayer: '2',
     engravingStyle: 'simple',
@@ -152,6 +153,7 @@
 
     normalized.timeLimit = Math.max(10, Number(normalized.timeLimit) || SETTINGS_DEFAULTS.timeLimit);
     normalized.rngSeed = Math.max(0, Math.trunc(Number(normalized.rngSeed) || SETTINGS_DEFAULTS.rngSeed));
+    normalized.workers = Math.max(1, Math.trunc(Number(normalized.workers) || SETTINGS_DEFAULTS.workers));
     normalized.partSpacing = Math.max(0, Number(normalized.partSpacing) || 0);
     normalized.sheetMargin = Math.max(0, Number(normalized.sheetMargin) || 0);
 

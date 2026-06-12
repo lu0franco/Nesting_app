@@ -4,8 +4,8 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 const { cleanupTempArtifacts } = require('../utils/temp-retention');
 
-let activeSparrowProcess = null;
-let activeSparrowRun = null;
+const activeSparrowProcesses = new Map();
+const sparrowRuns = new Map();
 
 function isDevMode() {
   return !app.isPackaged || process.argv.includes('--dev');
@@ -399,12 +399,13 @@ function collectRunningSparrowArtifacts(runDir, safeName) {
   };
 }
 
-function terminateActiveSparrow({ markStopped = true, forceAfterMs = 2000 } = {}) {
-  const child = activeSparrowProcess;
+function terminateSparrowRun(runId, { markStopped = true, forceAfterMs = 2000 } = {}) {
+  const child = activeSparrowProcesses.get(runId);
   if (!child) return false;
 
-  if (activeSparrowRun && markStopped && activeSparrowRun.status === 'running') {
-    activeSparrowRun.status = 'stopped';
+  const run = sparrowRuns.get(runId);
+  if (run && markStopped && run.status === 'running') {
+    run.status = 'stopped';
   }
 
   try {
@@ -419,7 +420,7 @@ function terminateActiveSparrow({ markStopped = true, forceAfterMs = 2000 } = {}
 
   if (Number.isFinite(forceAfterMs) && forceAfterMs > 0) {
     const timer = setTimeout(() => {
-      if (activeSparrowProcess !== child) return;
+      if (activeSparrowProcesses.get(runId) !== child) return;
       try {
         child.kill('SIGKILL');
       } catch {
@@ -432,9 +433,17 @@ function terminateActiveSparrow({ markStopped = true, forceAfterMs = 2000 } = {}
   return true;
 }
 
+function terminateAllSparrowRuns(options = {}) {
+  let stopped = 0;
+  [...activeSparrowProcesses.keys()].forEach(runId => {
+    if (terminateSparrowRun(runId, options)) stopped += 1;
+  });
+  return stopped;
+}
+
 function registerSparrowIpc() {
   app.on('before-quit', () => {
-    terminateActiveSparrow({ markStopped: true, forceAfterMs: 1000 });
+    terminateAllSparrowRuns({ markStopped: true, forceAfterMs: 1000 });
   });
 
   ipcMain.handle('get-native-engine-info', async () => {
@@ -459,10 +468,6 @@ function registerSparrowIpc() {
 
   ipcMain.handle('run-sparrow', async (event, payload, options = {}) => {
     try {
-      if (activeSparrowProcess) {
-        return { success: false, error: 'Sparrow is already running' };
-      }
-
       const sparrowPath = resolveNativeExecutable('sparrow');
       if (!fs.existsSync(sparrowPath)) {
         return { success: false, error: `Sparrow executable not found at ${sparrowPath}` };
@@ -485,6 +490,9 @@ function registerSparrowIpc() {
       }
       if (Number.isFinite(options.rngSeed)) {
         args.push('--rng-seed', String(options.rngSeed));
+      }
+      if (Number.isFinite(options.workers) && options.workers >= 1) {
+        args.push('--workers', String(Math.trunc(options.workers)));
       }
       if (options.earlyTermination) {
         args.push('--early-termination');
@@ -526,10 +534,9 @@ function registerSparrowIpc() {
         console.info('[Sparrow][dev] Spawn command:\n' + buildSpawnCommand(sparrowPath, args));
       }
 
-      const runId = `${safeName}-${Date.now()}`;
+      const runId = `${safeName}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
       const child = spawn(sparrowPath, args, { cwd: runDir });
-      activeSparrowProcess = child;
-      activeSparrowRun = {
+      sparrowRuns.set(runId, {
         id: runId,
         safeName,
         runDir,
@@ -539,32 +546,37 @@ function registerSparrowIpc() {
         status: 'running',
         exitCode: null,
         error: null,
-      };
+      });
+      activeSparrowProcesses.set(runId, child);
 
       child.stdout.on('data', chunk => {
-        if (activeSparrowRun) activeSparrowRun.stdout += chunk.toString();
+        const run = sparrowRuns.get(runId);
+        if (run) run.stdout += chunk.toString();
       });
       child.stderr.on('data', chunk => {
-        if (activeSparrowRun) activeSparrowRun.stderr += chunk.toString();
+        const run = sparrowRuns.get(runId);
+        if (run) run.stderr += chunk.toString();
       });
 
       child.on('error', error => {
-        if (activeSparrowRun) {
-          activeSparrowRun.status = 'error';
-          activeSparrowRun.error = error.message;
+        const run = sparrowRuns.get(runId);
+        if (run) {
+          run.status = 'error';
+          run.error = error.message;
         }
-        activeSparrowProcess = null;
+        activeSparrowProcesses.delete(runId);
       });
 
       child.on('close', code => {
-        if (activeSparrowRun) {
-          activeSparrowRun.exitCode = code;
-          activeSparrowRun.status = code === 0 ? 'completed' : (activeSparrowRun.status === 'stopped' ? 'stopped' : 'error');
-          if (code !== 0 && !activeSparrowRun.error && activeSparrowRun.status !== 'stopped') {
-            activeSparrowRun.error = `Sparrow exited with code ${code}`;
+        const run = sparrowRuns.get(runId);
+        if (run) {
+          run.exitCode = code;
+          run.status = code === 0 ? 'completed' : (run.status === 'stopped' ? 'stopped' : 'error');
+          if (code !== 0 && !run.error && run.status !== 'stopped') {
+            run.error = `Sparrow exited with code ${code}`;
           }
         }
-        activeSparrowProcess = null;
+        activeSparrowProcesses.delete(runId);
       });
 
       return {
@@ -576,46 +588,44 @@ function registerSparrowIpc() {
         stderr: '',
       };
     } catch (err) {
-      activeSparrowProcess = null;
-      activeSparrowRun = null;
       return { success: false, error: err.message };
     }
   });
 
-  ipcMain.handle('stop-sparrow', async () => {
-    if (!activeSparrowProcess) {
-      return { success: true, stopped: false };
-    }
-
+  ipcMain.handle('stop-sparrow', async (event, runId = null) => {
     try {
-      return { success: true, stopped: terminateActiveSparrow({ markStopped: true, forceAfterMs: 1000 }) };
+      if (runId) {
+        return { success: true, stopped: terminateSparrowRun(runId, { markStopped: true, forceAfterMs: 1000 }) };
+      }
+      return { success: true, stopped: terminateAllSparrowRuns({ markStopped: true, forceAfterMs: 1000 }) > 0 };
     } catch (err) {
       return { success: false, error: err.message };
     }
   });
 
   ipcMain.handle('poll-sparrow', async (event, runId) => {
-    if (!activeSparrowRun || activeSparrowRun.id !== runId) {
+    const run = sparrowRuns.get(runId);
+    if (!run) {
       return { success: false, error: 'Run not found' };
     }
 
-    const status = activeSparrowRun.status;
+    const status = run.status;
     const artifacts = status === 'running'
-      ? collectRunningSparrowArtifacts(activeSparrowRun.runDir, activeSparrowRun.safeName)
-      : collectSparrowArtifacts(activeSparrowRun.runDir, activeSparrowRun.safeName);
+      ? collectRunningSparrowArtifacts(run.runDir, run.safeName)
+      : collectSparrowArtifacts(run.runDir, run.safeName);
     const error = status === 'error'
-      ? (activeSparrowRun.stderr.trim() || activeSparrowRun.stdout.trim() || activeSparrowRun.error || 'Sparrow failed')
+      ? (run.stderr.trim() || run.stdout.trim() || run.error || 'Sparrow failed')
       : null;
 
     return {
       success: true,
       runId,
       status,
-      runDir: activeSparrowRun.runDir,
-      inputPath: activeSparrowRun.inputPath,
-      stdout: activeSparrowRun.stdout,
-      stderr: activeSparrowRun.stderr,
-      exitCode: activeSparrowRun.exitCode,
+      runDir: run.runDir,
+      inputPath: run.inputPath,
+      stdout: run.stdout,
+      stderr: run.stderr,
+      exitCode: run.exitCode,
       summaryPath: artifacts.summaryPath,
       summary: artifacts.summary,
       error,

@@ -172,6 +172,13 @@
           </div>
         </div>
         <div class="setting-row">
+          <label>Workers</label>
+          <div class="input-with-unit">
+            <input type="number" value="3" min="1" step="1" data-setting-key="workers" />
+            <span class="unit">threads</span>
+          </div>
+        </div>
+        <div class="setting-row">
           <label title="Only applies when running placements on multiple sheets. Auto uses the unified barrier-mode packer — recommended for most jobs. The bucketed options run the legacy planner that partitions items into per-sheet buckets up-front.">Multi-sheet strategy</label>
           <select data-setting-key="multiSheetStrategy">
             <option value="auto" selected>Auto</option>

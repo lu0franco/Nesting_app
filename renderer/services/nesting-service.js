@@ -193,6 +193,7 @@
           const sparrowOptions = {
             globalTime: Number(settings.timeLimit) || 60,
             rngSeed: Number.isFinite(Number(settings.rngSeed)) ? Math.trunc(Number(settings.rngSeed)) : 42,
+            workers: Number.isFinite(Number(settings.workers)) ? Math.max(1, Math.trunc(Number(settings.workers))) : 3,
             earlyTermination: !!settings.earlyStopping,
             maxStripLength: primarySheet.widthMode === 'unlimited' ? null : Number(primarySheet.width) || null,
             stripMargin: Number(settings.sheetMargin) || 0,
