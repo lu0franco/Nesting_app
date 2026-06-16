@@ -2,6 +2,7 @@
 
 (function defineDxfService(globalScope) {
   function createDxfService({ state, getCurrentNestingSettings }) {
+    const { FALLBACK_PALETTE = [] } = globalScope.NestDxfLayerService || {};
     const {
       buildAllowedOrientations,
       sanitizePolygonPoints,
@@ -10,6 +11,40 @@
       partLabelFromName,
       buildJobName,
     } = globalScope.NestHelpers;
+
+    function engravingLayerIndex(settings = getCurrentNestingSettings()) {
+      const raw = settings?.engravingLayer;
+      if (raw === 'off' || raw === false || raw == null || raw === '') return null;
+      const parsed = Number.parseInt(String(raw), 10);
+      return Number.isFinite(parsed) && parsed >= 1 ? parsed : 2;
+    }
+
+    function batchLayerTemplateAtIndex(targetIndex, excludeFileId = null) {
+      if (!Number.isFinite(targetIndex) || targetIndex < 1) return null;
+      for (const file of state.files || []) {
+        if (excludeFileId && file?.id === excludeFileId) continue;
+        const layer = Array.isArray(file?.layers) ? file.layers[targetIndex - 1] : null;
+        if (layer?.name || layer?.color) return { ...layer };
+      }
+      return null;
+    }
+
+    function synthesizeEngravingLayer(layers, settings = getCurrentNestingSettings(), excludeFileId = null) {
+      const targetIndex = engravingLayerIndex(settings);
+      const sourceLayers = Array.isArray(layers) ? layers.map(layer => ({ ...layer })) : [];
+      if (targetIndex === null) return sourceLayers;
+      if (sourceLayers[targetIndex - 1]?.name) return sourceLayers;
+
+      const batchTemplate = batchLayerTemplateAtIndex(targetIndex, excludeFileId);
+      const fallbackColor = FALLBACK_PALETTE.length
+        ? FALLBACK_PALETTE[(targetIndex - 1) % FALLBACK_PALETTE.length]
+        : '#4488FF';
+      sourceLayers[targetIndex - 1] = {
+        name: batchTemplate?.name || `Layer ${targetIndex}`,
+        color: batchTemplate?.color || sourceLayers[targetIndex - 1]?.color || fallbackColor,
+      };
+      return sourceLayers.filter(Boolean);
+    }
 
     // Guarantees a file has parsed shapes with export metadata before they're used.
     // If the shapes are already fully populated, skips the expensive IPC round-trip.
@@ -40,7 +75,7 @@
         ...shape,
         qty: file.qty || shape.qty || 1,
       }));
-      file.layers = Array.isArray(parsed.layers) ? parsed.layers.map(layer => ({ ...layer })) : [];
+      file.layers = synthesizeEngravingLayer(parsed.layers || [], settings, file.id);
       file._multiSketchDetection = !!settings.multiSketchDetection;
       file._sketchContourMethod = sketchContourMethod;
       file.qty = effectiveFileQty(file);
@@ -72,6 +107,11 @@
       const allowedOrientations = buildAllowedOrientations(settings.rotationStep);
 
       for (const file of state.files) {
+        await ensureFileShapes(file);
+        file.layers = synthesizeEngravingLayer(file.layers || [], settings, file.id);
+      }
+
+      for (const file of state.files) {
         const shapes = (await ensureFileShapes(file)).filter(shape => shape.visible !== false);
         shapes.forEach(shape => {
           const points = sanitizePolygonPoints(shape.polygonPoints);
@@ -94,7 +134,7 @@
             source_name: file.name,
             source_shape_id: shape.id,
             part_label: partLabelFromName(file.name),
-            layers: clonePlain(file.layers || []),
+            layers: clonePlain(synthesizeEngravingLayer(file.layers || [], settings, file.id)),
             entities: clonePlain(shape.exportEntities || []),
             polygon: points.map(point => [point.x, point.y]),
             holes: clonePlain(

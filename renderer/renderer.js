@@ -82,6 +82,7 @@ const dom = {
 // about it.
 const { state, schedulePersistJobState, hydrateJobState } = window.NestStore.createAppStore();
 const { DEFAULT_ENGRAVING_COLOR } = window.NestConstants;
+const { FALLBACK_PALETTE = [] } = window.NestDxfLayerService || {};
 const { partLabelFromName } = window.NestHelpers;
 const customSelectsApi = window.NestCustomSelects?.createModalCustomSelects?.() || null;
 const linuxAppMenuApi = window.NestLinuxAppMenu?.createLinuxAppMenu?.() || null;
@@ -213,13 +214,23 @@ function engravingLayerIndex(settings = currentNestingSettings()) {
   return Number.isFinite(parsed) && parsed >= 1 ? parsed : 2;
 }
 
+function batchLayerAtIndex(index) {
+  if (!Number.isFinite(index) || index < 1) return null;
+  for (const file of state.files || []) {
+    const layer = Array.isArray(file?.layers) ? file.layers[index - 1] : null;
+    if (layer?.name || layer?.color) return layer;
+  }
+  return null;
+}
+
 // Picks the best available colour for engraving text: uses the configured
 // layer colour when present, then falls back through layers 2 → 1 → a constant
 // default so the label is always visible regardless of DXF layer setup.
 function resolveEngravingColor(layers = []) {
   const idx = engravingLayerIndex();
   if (idx !== null && layers[idx - 1]?.color) return layers[idx - 1].color;
-  if (layers[1]?.color) return layers[1].color;
+  if (idx !== null && batchLayerAtIndex(idx)?.color) return batchLayerAtIndex(idx).color;
+  if (idx !== null && FALLBACK_PALETTE.length) return FALLBACK_PALETTE[(idx - 1) % FALLBACK_PALETTE.length];
   if (layers[0]?.color) return layers[0].color;
   return DEFAULT_ENGRAVING_COLOR;
 }

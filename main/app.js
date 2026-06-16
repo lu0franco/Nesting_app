@@ -13,6 +13,11 @@ const LINKEDIN_URL = 'https://www.linkedin.com/company/kenzap';
 let mainWindow = null;
 let appMenuIpcRegistered = false;
 
+if (process.mas) {
+  // Diagnostic workaround for MAS sandbox startup crashes on newer macOS builds.
+  app.commandLine.appendSwitch('js-flags', '--jitless');
+}
+
 function configureAppMetadata() {
   app.setName(productName);
   app.setAboutPanelOptions({
@@ -199,7 +204,7 @@ function registerAppMenuIpc() {
   });
 }
 
-function createWindow({ isDevMode = false } = {}) {
+function createWindow({ isDevMode = false, minimalStartup = false } = {}) {
   const windowIcon = path.join(__dirname, '..', 'assets', 'icon-square.png');
   const windowOptions = {
     width: 1280,
@@ -208,20 +213,47 @@ function createWindow({ isDevMode = false } = {}) {
     minHeight: 600,
     backgroundColor: '#0f1117',
     webPreferences: {
-      preload: path.join(__dirname, '..', 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },
     icon: windowIcon,
   };
 
-  if (process.platform === 'darwin') {
+  if (!minimalStartup) {
+    windowOptions.webPreferences.preload = path.join(__dirname, '..', 'preload.js');
+  }
+
+  if (process.platform === 'darwin' && !minimalStartup) {
     windowOptions.titleBarStyle = 'hiddenInset';
   }
 
   mainWindow = new BrowserWindow(windowOptions);
 
-  mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  if (minimalStartup) {
+    mainWindow.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>${productName}</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0f1117;
+        color: #f5f7fb;
+        font: 16px -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <p>MAS diagnostic startup</p>
+  </body>
+</html>`)}`);
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+  }
   mainWindow.webContents.on('will-navigate', (event) => {
     event.preventDefault();
   });
@@ -232,12 +264,14 @@ function createWindow({ isDevMode = false } = {}) {
   return mainWindow;
 }
 
-function initializeApp({ isDevMode = false } = {}) {
+function initializeApp({ isDevMode = false, minimalStartup = false } = {}) {
   configureAppMetadata();
 
   app.whenReady().then(() => {
-    buildApplicationMenu({ isDevMode });
-    createWindow({ isDevMode });
+    if (!minimalStartup) {
+      buildApplicationMenu({ isDevMode });
+    }
+    createWindow({ isDevMode, minimalStartup });
   });
 
   app.on('window-all-closed', () => {
@@ -245,7 +279,9 @@ function initializeApp({ isDevMode = false } = {}) {
   });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow({ isDevMode });
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow({ isDevMode, minimalStartup });
+    }
   });
 }
 

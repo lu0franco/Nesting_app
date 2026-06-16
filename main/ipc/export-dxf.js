@@ -10,6 +10,8 @@ const {
   engravingVisualStyle,
 } = require('../../shared/engraving-layout');
 
+const FALLBACK_LAYER_COLORS = ['#4f8ef7', '#f75f5f', '#4fcf8e', '#f7c34f', '#cf4ff7', '#4ff7e8', '#f77f4f'];
+
 function registerExportDxfIpc() {
   // Write one DXF per strip using placement data from the strip JSON files.
   ipcMain.handle('export-sheets-dxf', async (event, {
@@ -385,12 +387,24 @@ function registerExportDxfIpc() {
         return [...layerMap.values()];
       }
 
+      function synthesizeEngravingLayer(layers, idx) {
+        const sourceLayers = Array.isArray(layers) ? layers.map(layer => ({ ...layer })) : [];
+        if (!Number.isFinite(idx) || idx < 1) return sourceLayers;
+        if (sourceLayers[idx - 1]?.name) return sourceLayers;
+        sourceLayers[idx - 1] = {
+          name: `Layer ${idx}`,
+          color: sourceLayers[idx - 1]?.color || FALLBACK_LAYER_COLORS[(idx - 1) % FALLBACK_LAYER_COLORS.length],
+        };
+        return sourceLayers.filter(Boolean);
+      }
+
       function getEngravingLayer(item) {
         const raw = exportSettings.engravingLayer;
         if (raw === 'off' || raw == null || raw === '' || raw === false) return null;
         const idx = Number.parseInt(String(raw), 10);
         if (!Number.isFinite(idx) || idx < 1) return null;
-        return item?.export?.layers?.[idx - 1] || null;
+        const layers = synthesizeEngravingLayer(item?.export?.layers || [], idx);
+        return layers[idx - 1] || null;
       }
 
       function labelForItem(item) {

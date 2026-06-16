@@ -850,6 +850,39 @@
   }
 
   function createDxfPreviewService() {
+    function engravingLayerIndex(settings = (typeof global.getCurrentNestingSettings === 'function' ? global.getCurrentNestingSettings() : {})) {
+      const raw = settings?.engravingLayer;
+      if (raw === 'off' || raw === false || raw == null || raw === '') return null;
+      const parsed = Number.parseInt(String(raw), 10);
+      return Number.isFinite(parsed) && parsed >= 1 ? parsed : 2;
+    }
+
+    function batchLayerTemplateAtIndex(state, targetIndex, excludeFileId = null) {
+      if (!Number.isFinite(targetIndex) || targetIndex < 1) return null;
+      for (const file of state?.files || []) {
+        if (excludeFileId && file?.id === excludeFileId) continue;
+        const layer = Array.isArray(file?.layers) ? file.layers[targetIndex - 1] : null;
+        if (layer?.name || layer?.color) return { ...layer };
+      }
+      return null;
+    }
+
+    function synthesizeEngravingLayerSequence(layers, state, fileId, settings) {
+      const targetIndex = engravingLayerIndex(settings);
+      const sourceLayers = Array.isArray(layers) ? layers.map(layer => ({ ...layer })) : [];
+      if (targetIndex === null) return sourceLayers;
+      if (sourceLayers[targetIndex - 1]?.name) return sourceLayers;
+      const batchTemplate = batchLayerTemplateAtIndex(state, targetIndex, fileId);
+      const fallbackColor = FALLBACK_PALETTE.length
+        ? FALLBACK_PALETTE[(targetIndex - 1) % FALLBACK_PALETTE.length]
+        : '#4488FF';
+      sourceLayers[targetIndex - 1] = {
+        name: batchTemplate?.name || `Layer ${targetIndex}`,
+        color: batchTemplate?.color || sourceLayers[targetIndex - 1]?.color || fallbackColor,
+      };
+      return sourceLayers.filter(Boolean);
+    }
+
     // Entry point for opening a DXF preview. Tries three sources in priority
     // order: already-parsed shapes in state → parse from disk via Electron →
     // mock data. Always returns something so the UI never hangs on a blank modal.
@@ -865,7 +898,10 @@
       let source = 'mock';
 
       if (matchesSketchMode && matchesContourMethod && file?.shapes?.length) {
-        data = applyPartLabelsToPreviewData(clonePreviewData({ shapes: file.shapes, layers: file.layers || [] }), filename);
+        data = applyPartLabelsToPreviewData(clonePreviewData({
+          shapes: file.shapes,
+          layers: synthesizeEngravingLayerSequence(file.layers || [], state, fileId, settings),
+        }), filename);
         source = 'saved';
       }
 
@@ -875,7 +911,11 @@
           if (result.success && result.data) {
             const parsed = parseDXFToShapes(result.data, result.raw, settings);
             if (parsed) {
-              data = applyPartLabelsToPreviewData(clonePreviewData(parsed), filename);
+              const enriched = {
+                ...parsed,
+                layers: synthesizeEngravingLayerSequence(parsed.layers || [], state, fileId, settings),
+              };
+              data = applyPartLabelsToPreviewData(clonePreviewData(enriched), filename);
               file.shapes = clonePreviewData(data).shapes;
               file.layers = clonePreviewData(data).layers;
               file._multiSketchDetection = !!settings.multiSketchDetection;

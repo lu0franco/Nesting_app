@@ -10,6 +10,7 @@
   }) {
     const { formatWidthMeters, partLabelFromName } = globalScope.NestHelpers;
     const { DEFAULT_ENGRAVING_COLOR } = globalScope.NestConstants;
+    const { FALLBACK_PALETTE = [] } = globalScope.NestDxfLayerService || {};
     const FIT_INSET_X = 40;
     const FIT_INSET_Y = 28;
     const SVG_PREVIEW_MARGIN_X = 80;
@@ -24,12 +25,22 @@
       return Number.isFinite(parsed) && parsed >= 1 ? parsed : 2;
     }
 
+    function batchLayerAtIndex(index) {
+      if (!Number.isFinite(index) || index < 1) return null;
+      for (const file of state.files || []) {
+        const layer = Array.isArray(file?.layers) ? file.layers[index - 1] : null;
+        if (layer?.name || layer?.color) return layer;
+      }
+      return null;
+    }
+
     // Picks the best available hex colour for engraving labels.
     // Falls back through the configured engraving layer → layer 2 → layer 1 → the app default.
     function resolveEngravingColor(layers = []) {
       const idx = engravingLayerIndex();
       if (idx !== null && layers[idx - 1]?.color) return layers[idx - 1].color;
-      if (layers[1]?.color) return layers[1].color;
+      if (idx !== null && batchLayerAtIndex(idx)?.color) return batchLayerAtIndex(idx).color;
+      if (idx !== null && FALLBACK_PALETTE.length) return FALLBACK_PALETTE[(idx - 1) % FALLBACK_PALETTE.length];
       if (layers[0]?.color) return layers[0].color;
       return DEFAULT_ENGRAVING_COLOR;
     }
