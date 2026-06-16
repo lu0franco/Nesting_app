@@ -212,6 +212,20 @@
           </select>
         </div>
         <div class="setting-row">
+          <label>Export debug</label>
+          <label class="toggle">
+            <input type="checkbox" data-setting-key="exportDebug" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <label title="Best effort. Joins end-to-end LINE entities into larger polylines during DXF export to help CNC and laser software follow connected sketch linework more predictably. Does not bridge gaps or merge truly separate bodies.">Join connected linework</label>
+          <label class="toggle">
+            <input type="checkbox" data-setting-key="joinConnectedLinework" />
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+        <div class="setting-row">
           <label>Engraving layer</label>
           <select data-setting-key="engravingLayer">
             <option value="off">Disabled</option>
@@ -225,10 +239,14 @@
         <div class="setting-row">
           <label>Engraving style</label>
           <select data-setting-key="engravingStyle">
-            <option value="simple" selected>Single line (faster)</option>
-            <option value="stroked">Outlined (bolder)</option>
-            <option value="last-digit">Last character only</option>
-            <option value="last-two-digits">Last two characters only</option>
+            <option value="simple" selected>Full label (single line)</option>
+            <option value="stroked">Full label (outlined)</option>
+            <option value="last-char">Last 1 character</option>
+            <option value="last-two-chars">Last 2 characters</option>
+            <option value="last-three-chars">Last 3 characters</option>
+            <option value="first-char">First 1 character</option>
+            <option value="first-two-chars">First 2 characters</option>
+            <option value="first-three-chars">First 3 characters</option>
           </select>
         </div>
       </div>

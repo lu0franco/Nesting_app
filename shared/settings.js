@@ -40,6 +40,17 @@
     'bottom-right',
   ];
 
+  const ENGRAVING_STYLES = [
+    'simple',
+    'stroked',
+    'last-char',
+    'last-two-chars',
+    'last-three-chars',
+    'first-char',
+    'first-two-chars',
+    'first-three-chars',
+  ];
+
   const SETTINGS_DEFAULTS = {
     partSpacing: 0,
     sheetMargin: 0,
@@ -51,6 +62,8 @@
     rngSeed: 42,
     workers: 3,
     exportFormat: 'dxf',
+    exportDebug: false,
+    joinConnectedLinework: false,
     engravingLayer: '2',
     engravingStyle: 'simple',
     sketchContourMethod: 'arrangement',
@@ -129,7 +142,13 @@
       normalized.exportFormat = SETTINGS_DEFAULTS.exportFormat;
     }
 
-    if (!['simple', 'stroked', 'last-digit', 'last-two-digits'].includes(normalized.engravingStyle)) {
+    if (normalized.engravingStyle === 'last-digit') {
+      normalized.engravingStyle = 'last-char';
+    } else if (normalized.engravingStyle === 'last-two-digits') {
+      normalized.engravingStyle = 'last-two-chars';
+    }
+
+    if (!ENGRAVING_STYLES.includes(normalized.engravingStyle)) {
       normalized.engravingStyle = SETTINGS_DEFAULTS.engravingStyle;
     }
 
@@ -167,6 +186,7 @@
     MULTI_SHEET_STRATEGIES,
     MULTI_SHEET_STRATEGY_OPTIONS,
     PREFERRED_ALIGNMENTS,
+    ENGRAVING_STYLES,
     normalizeSettings,
   };
 

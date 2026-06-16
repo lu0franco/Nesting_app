@@ -1,4 +1,4 @@
-const { app, ipcMain } = require('electron');
+const { ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { normalizeSettings } = require('../../shared/settings');
@@ -11,7 +11,6 @@ const {
 } = require('../../shared/engraving-layout');
 
 function registerExportDxfIpc() {
-  const isDev = !app.isPackaged || process.argv.includes('--dev');
   // Write one DXF per strip using placement data from the strip JSON files.
   ipcMain.handle('export-sheets-dxf', async (event, {
     outputDir,
@@ -29,7 +28,7 @@ function registerExportDxfIpc() {
         .replace(/^-+|-+$/g, '') || 'sheet';
 
       const globalItemsById = {};
-      const exportSettings = {};
+      const exportSettings = normalizeSettings({});
       if (inputPath && fs.existsSync(inputPath)) {
         try {
           const inputData = JSON.parse(fs.readFileSync(inputPath, 'utf-8'));
@@ -174,6 +173,178 @@ function registerExportDxfIpc() {
           return { type: 'aci', value: approxAciFromHex(entity.color) };
         }
         return null;
+      }
+
+      const LINEWORK_JOIN_EPSILON = 0.001;
+
+      function clonePoint(point) {
+        return {
+          x: Number(point?.x || 0),
+          y: Number(point?.y || 0),
+          z: Number.isFinite(point?.z) ? Number(point.z) : 0,
+        };
+      }
+
+      function pointKey(point, epsilon = LINEWORK_JOIN_EPSILON) {
+        const z = Number.isFinite(point?.z) ? Number(point.z) : 0;
+        return [
+          Math.round(Number(point?.x || 0) / epsilon),
+          Math.round(Number(point?.y || 0) / epsilon),
+          Math.round(z / epsilon),
+        ].join(':');
+      }
+
+      function pointsAlmostEqual(a, b, epsilon = LINEWORK_JOIN_EPSILON) {
+        return !!a && !!b &&
+          Math.abs(Number(a.x || 0) - Number(b.x || 0)) <= epsilon &&
+          Math.abs(Number(a.y || 0) - Number(b.y || 0)) <= epsilon &&
+          Math.abs((Number.isFinite(a.z) ? Number(a.z) : 0) - (Number.isFinite(b.z) ? Number(b.z) : 0)) <= epsilon;
+      }
+
+      function lineEndpoints(entity) {
+        if (!entity || entity.type !== 'LINE') return null;
+        const start = entity.start || (Array.isArray(entity.vertices) && entity.vertices.length >= 2 ? entity.vertices[0] : null);
+        const end = entity.end || (Array.isArray(entity.vertices) && entity.vertices.length >= 2 ? entity.vertices[entity.vertices.length - 1] : null);
+        if (!start || !end) return null;
+        if (!Number.isFinite(start.x) || !Number.isFinite(start.y) || !Number.isFinite(end.x) || !Number.isFinite(end.y)) return null;
+        return {
+          start: clonePoint(start),
+          end: clonePoint(end),
+        };
+      }
+
+      function lineworkJoinSignature(entity) {
+        const color = entityColorCodes(entity);
+        return JSON.stringify({
+          layer: entity?.layer || '0',
+          colorType: color?.type || null,
+          colorValue: color?.value ?? null,
+        });
+      }
+
+      function orientedLineEntity(record, reverse = false) {
+        if (!reverse) {
+          return {
+            entity: record.entity,
+            start: record.start,
+            end: record.end,
+            startKey: record.startKey,
+            endKey: record.endKey,
+          };
+        }
+        return {
+          entity: {
+            ...record.entity,
+            start: clonePoint(record.end),
+            end: clonePoint(record.start),
+          },
+          start: record.end,
+          end: record.start,
+          startKey: record.endKey,
+          endKey: record.startKey,
+        };
+      }
+
+      function joinConnectedLineworkEntities(entities) {
+        if (!Array.isArray(entities) || entities.length < 2) return Array.isArray(entities) ? entities : [];
+
+        const passthrough = [];
+        const groups = new Map();
+
+        entities.forEach(entity => {
+          if (entity?.type !== 'LINE') {
+            passthrough.push(entity);
+            return;
+          }
+          const endpoints = lineEndpoints(entity);
+          if (!endpoints) {
+            passthrough.push(entity);
+            return;
+          }
+          const signature = lineworkJoinSignature(entity);
+          const record = {
+            id: `${signature}:${groups.get(signature)?.length || 0}:${entity.handle || ''}`,
+            entity,
+            start: endpoints.start,
+            end: endpoints.end,
+            startKey: pointKey(endpoints.start),
+            endKey: pointKey(endpoints.end),
+          };
+          if (!groups.has(signature)) groups.set(signature, []);
+          groups.get(signature).push(record);
+        });
+
+        const merged = [];
+
+        groups.forEach(records => {
+          if (records.length < 2) {
+            merged.push(...records.map(record => record.entity));
+            return;
+          }
+
+          const byId = new Map(records.map(record => [record.id, record]));
+          const adjacency = new Map();
+          const addAdjacency = (key, id) => {
+            if (!adjacency.has(key)) adjacency.set(key, []);
+            adjacency.get(key).push(id);
+          };
+          records.forEach(record => {
+            addAdjacency(record.startKey, record.id);
+            addAdjacency(record.endKey, record.id);
+          });
+          const degreeOf = key => adjacency.get(key)?.length || 0;
+          const unused = new Set(records.map(record => record.id));
+
+          while (unused.size) {
+            const seedId = unused.values().next().value;
+            const seed = byId.get(seedId);
+            unused.delete(seedId);
+            const chain = [orientedLineEntity(seed, false)];
+
+            let cursorKey = seed.endKey;
+            while (degreeOf(cursorKey) === 2) {
+              const candidates = (adjacency.get(cursorKey) || []).filter(id => unused.has(id));
+              if (candidates.length !== 1) break;
+              const nextRecord = byId.get(candidates[0]);
+              const reverse = nextRecord.endKey === cursorKey;
+              const oriented = orientedLineEntity(nextRecord, reverse);
+              chain.push(oriented);
+              unused.delete(nextRecord.id);
+              cursorKey = oriented.endKey;
+            }
+
+            cursorKey = seed.startKey;
+            while (degreeOf(cursorKey) === 2) {
+              const candidates = (adjacency.get(cursorKey) || []).filter(id => unused.has(id));
+              if (candidates.length !== 1) break;
+              const nextRecord = byId.get(candidates[0]);
+              const reverse = nextRecord.startKey === cursorKey;
+              const oriented = orientedLineEntity(nextRecord, reverse);
+              chain.unshift(oriented);
+              unused.delete(nextRecord.id);
+              cursorKey = oriented.startKey;
+            }
+
+            if (chain.length < 2) {
+              merged.push(chain[0].entity);
+              continue;
+            }
+
+            const vertices = [clonePoint(chain[0].start)];
+            chain.forEach(segment => vertices.push(clonePoint(segment.end)));
+            const closed = pointsAlmostEqual(vertices[0], vertices[vertices.length - 1]);
+            if (closed) vertices.pop();
+
+            merged.push({
+              ...chain[0].entity,
+              type: 'LWPOLYLINE',
+              closed,
+              vertices,
+            });
+          }
+        });
+
+        return [...passthrough, ...merged];
       }
 
       function writeColor(lines, entity) {
@@ -417,8 +588,8 @@ function registerExportDxfIpc() {
 
       function buildStrokeLabelEntities(text, layerName, placedPolygon, placedHoles = []) {
         // Apply the style-driven text transform before layout so the
-        // engraving sizing reflects the actual rendered characters (in
-        // `'last-digit'` mode that's just one or two glyphs).
+        // engraving sizing reflects the actual rendered characters even when
+        // the user chose one of the first/last-N-character modes.
         const engravedText = engravingLabelText(text, exportSettings.engravingStyle);
         if (!engravedText) return [];
         const layout = layoutEngravingLabel({
@@ -430,8 +601,8 @@ function registerExportDxfIpc() {
 
         const { chars, charH, charW, startX, baseY } = layout;
         const entities = [];
-        // `'last-digit'` is a content option, not a visual style — drop
-        // through to simple single-line strokes for the actual rendering.
+        // Content-truncating modes affect what text is engraved, not how each
+        // glyph is drawn — they all render as simple single-line strokes.
         const style = engravingVisualStyle(exportSettings.engravingStyle);
         const glyphPoint = (point, ox) => ({
           x: +(ox + point[0] * charW).toFixed(4),
@@ -1065,7 +1236,10 @@ function registerExportDxfIpc() {
             engravingLayer: getEngravingLayer(item)?.name || null,
             label: labelForItem(item),
           });
-          const entities = (item.export?.entities || []).filter(isRenderableExportEntity);
+          const rawEntities = (item.export?.entities || []).filter(isRenderableExportEntity);
+          const entities = exportSettings.joinConnectedLinework
+            ? joinConnectedLineworkEntities(rawEntities)
+            : rawEntities;
           let usedFallback = false;
           if (entities.length) {
             entities.forEach(entity => {
@@ -1098,6 +1272,8 @@ function registerExportDxfIpc() {
             source_name: exportItem?.source_name || item?.dxf || null,
             export_layer_count: Array.isArray(exportItem?.layers) ? exportItem.layers.length : 0,
             export_entity_count: Array.isArray(exportItem?.entities) ? exportItem.entities.length : 0,
+            joined_linework_enabled: !!exportSettings.joinConnectedLinework,
+            joined_entity_count: entities.length,
             renderable_entity_count: entities.length,
             polygon_point_count: Array.isArray(sourcePolygon) ? sourcePolygon.length : 0,
             used_fallback_polygon: usedFallback,
@@ -1114,7 +1290,7 @@ function registerExportDxfIpc() {
         const outPath = path.join(outputDir, `${safeName}_sheet_${idx}.dxf`);
         const debugPath = path.join(outputDir, `${safeName}_sheet_${idx}.debug.json`);
         overwriteTextFile(outPath, dxf);
-        if (isDev) {
+        if (exportSettings.exportDebug) {
           overwriteTextFile(debugPath, JSON.stringify({
             strip_index: strip.index,
             strip_json_path: strip.json_path,

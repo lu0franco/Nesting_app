@@ -266,12 +266,16 @@
     return null;
   }
 
-  // Number of trailing alphanumeric characters each "last N" style keeps.
-  // The extraction caps at the trailing alphanumeric run's length, so a
-  // part with a single-character suffix never grows extra characters.
-  const TRAILING_STYLE_LENGTHS = {
-    'last-digit': 1,
-    'last-two-digits': 2,
+  // Content-only engraving styles. These truncate the label to the first or
+  // last N alphanumeric characters of the corresponding contiguous run,
+  // ignoring separators at the outer edge.
+  const CONTENT_SLICE_STYLES = {
+    'last-char': { side: 'last', count: 1 },
+    'last-two-chars': { side: 'last', count: 2 },
+    'last-three-chars': { side: 'last', count: 3 },
+    'first-char': { side: 'first', count: 1 },
+    'first-two-chars': { side: 'first', count: 2 },
+    'first-three-chars': { side: 'first', count: 3 },
   };
 
   /**
@@ -280,33 +284,35 @@
    *
    * - `'simple'` and `'stroked'` keep the full label text and only differ in
    *   visual style (single-line strokes vs outlined glyphs).
-   * - `'last-digit'` and `'last-two-digits'` truncate the label to the last
-   *   1 or 2 characters of its trailing alphanumeric run — digits *or*
-   *   letters. So `44924_1` engraves as `1` for both styles (only one char
-   *   available), `part_23` engraves as `3` / `23`, `frame-bc` engraves as
-   *   `c` / `bc`, and `part_v2` engraves as `2` / `v2`.
-   * - Separators (`_`, `-`, `.`, etc.) at the end are skipped — they're not
-   *   counted toward the N characters and never appear in the engraving.
+   * - The `last-*` variants truncate to the last 1/2/3 characters of the
+   *   trailing alphanumeric run. `44924_1` engraves as `1`, `part_23` as `23`
+   *   or `3`, and `frame-bc` as `bc` or `c`.
+   * - The `first-*` variants truncate to the first 1/2/3 characters of the
+   *   leading alphanumeric run. `AB-123` engraves as `A`, `AB`, or `AB`/`AB-`
+   *   is never possible because separators are skipped and not included.
+   * - Separators (`_`, `-`, `.`, etc.) at either outer edge are skipped —
+   *   they are not counted toward the N characters and never appear in the engraving.
    * - Labels without any trailing alphanumeric character fall through to
    *   the full text so the engraving is never blank.
-   *
-   * The value names stay `last-digit` / `last-two-digits` for back-compat
-   * with previously-saved settings even though they now match letters too.
    */
   function engravingLabelText(text, style) {
     const str = String(text || '');
-    const maxChars = TRAILING_STYLE_LENGTHS[style];
-    if (!maxChars) return str;
-    const match = str.match(/([a-z0-9]+)[^a-z0-9]*$/i);
+    const sliceStyle = CONTENT_SLICE_STYLES[style];
+    if (!sliceStyle) return str;
+    const match = sliceStyle.side === 'first'
+      ? str.match(/^[^a-z0-9]*([a-z0-9]+)/i)
+      : str.match(/([a-z0-9]+)[^a-z0-9]*$/i);
     if (!match) return str;
-    return match[1].slice(-maxChars);
+    return sliceStyle.side === 'first'
+      ? match[1].slice(0, sliceStyle.count)
+      : match[1].slice(-sliceStyle.count);
   }
 
   /**
    * Maps an engraving style to the visual style key used by the renderer
-   * (`'simple'` or `'stroked'`). `'last-digit'` always renders as simple
-   * single-line strokes because outlined glyphs would be visually noisy
-   * for one or two characters.
+   * (`'simple'` or `'stroked'`). All content-truncating variants render as
+   * simple single-line strokes because very short labels do not benefit from
+   * outlined glyphs.
    */
   function engravingVisualStyle(style) {
     return style === 'stroked' ? 'stroked' : 'simple';

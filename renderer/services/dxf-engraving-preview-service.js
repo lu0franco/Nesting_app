@@ -188,14 +188,13 @@
   // the filled-outline style and the lightweight stroke-only style via `style`.
   function buildPreviewLabelSvg(text, bbox, color, style, outerPolygon = null, holes = []) {
     if (!bbox || !Number.isFinite(bbox.w) || !Number.isFinite(bbox.h)) return '';
-    // Apply style-driven text transforms here (e.g. `'last-digit'` extracts
-    // the trailing digit run) before layout so the engraving size is
-    // calculated against the actual rendered characters.
+    // Apply style-driven text transforms here before layout so the engraving
+    // size is calculated against the actual rendered characters.
     const engravedText = engravingLabelText(text, style);
     if (!engravedText) return '';
     // The remainder of the function only cares about how to *draw* each
-    // glyph — translate `'last-digit'` (a content option) into the visual
-    // style it should be rendered with.
+    // glyph — translate the content-truncating modes into the visual style
+    // they should be rendered with.
     const visualStyle = engravingVisualStyle(style);
     const fallbackOuter = [
       { x: 0, y: 0 },

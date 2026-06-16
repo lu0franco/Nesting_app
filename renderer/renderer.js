@@ -224,13 +224,14 @@ function resolveEngravingColor(layers = []) {
   return DEFAULT_ENGRAVING_COLOR;
 }
 
-// Returns the engraving style: 'simple' (single-line), 'stroked' (outlined),
-// or 'last-digit' (only the trailing digit run of the part name, rendered as
-// simple single-line strokes). Unknown values fall back to 'stroked'.
+// Returns the engraving style: either the full-label visual modes
+// ('simple'/'stroked') or one of the content-truncating first/last character
+// variants. Unknown values fall back to 'stroked'.
 function engravingStyle(settings = currentNestingSettings()) {
   const raw = settings?.engravingStyle;
   if (raw === 'simple' || raw === 'stroked'
-      || raw === 'last-digit' || raw === 'last-two-digits') return raw;
+      || raw === 'last-char' || raw === 'last-two-chars' || raw === 'last-three-chars'
+      || raw === 'first-char' || raw === 'first-two-chars' || raw === 'first-three-chars') return raw;
   return 'stroked';
 }
 
