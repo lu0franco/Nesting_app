@@ -13,11 +13,6 @@ const LINKEDIN_URL = 'https://www.linkedin.com/company/kenzap';
 let mainWindow = null;
 let appMenuIpcRegistered = false;
 
-if (process.mas) {
-  // Diagnostic workaround for MAS sandbox startup crashes on newer macOS builds.
-  app.commandLine.appendSwitch('js-flags', '--jitless');
-}
-
 function configureAppMetadata() {
   app.setName(productName);
   app.setAboutPanelOptions({

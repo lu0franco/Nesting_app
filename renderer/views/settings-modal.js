@@ -4,8 +4,7 @@
   function createSettingsModal({ state, dom, onSettingsApplied }) {
     const { SETTINGS_DEFAULTS, normalizeSettings } = globalScope.NestSettings;
     const settingsFields = dom.settingsFields;
-    const contourMethodField = settingsFields.find(field => field.dataset.settingKey === 'sketchContourMethod') || null;
-    const contourMethodRow = contourMethodField?.closest('[data-dev-only-setting="sketchContourMethod"]') || null;
+    const devOnlyRows = Array.from(document.querySelectorAll('[data-dev-only-setting]'));
     let isDevBuild = false;
 
     // Reads the current value of a single settings field, normalising checkboxes to
@@ -51,7 +50,9 @@
     }
 
     function applyDevOnlyVisibility() {
-      if (contourMethodRow) contourMethodRow.hidden = !isDevBuild;
+      devOnlyRows.forEach(row => {
+        row.hidden = !isDevBuild;
+      });
     }
 
     function normalizeDialogSettings(settings) {

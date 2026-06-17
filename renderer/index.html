@@ -164,14 +164,14 @@
             <span class="unit">seconds</span>
           </div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-dev-only-setting="rngSeed" hidden style="display: none;">
           <label>Random seed</label>
           <div class="input-with-unit">
             <input type="number" value="42" min="0" step="1" data-setting-key="rngSeed" />
             <span class="unit">seed</span>
           </div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-dev-only-setting="workers" hidden style="display: none;">
           <label>Workers</label>
           <div class="input-with-unit">
             <input type="number" value="3" min="1" step="1" data-setting-key="workers" />
@@ -211,7 +211,7 @@
             <option value="dxf">DXF</option>
           </select>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" data-dev-only-setting="exportDebug" hidden style="display: none;">
           <label>Export debug</label>
           <label class="toggle">
             <input type="checkbox" data-setting-key="exportDebug" />

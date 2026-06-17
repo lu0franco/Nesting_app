@@ -25,10 +25,6 @@ function registerExportDxfIpc() {
     try {
       return await withSecurityScopedAccess(outputDirBookmark, async () => {
       fs.mkdirSync(outputDir, { recursive: true });
-      const safeName = String(jobName || 'sheet')
-        .replace(/[^a-z0-9-_]+/gi, '-')
-        .replace(/^-+|-+$/g, '') || 'sheet';
-
       const globalItemsById = {};
       const exportSettings = normalizeSettings({});
       if (inputPath && fs.existsSync(inputPath)) {
@@ -105,6 +101,19 @@ function registerExportDxfIpc() {
         const numeric = Number(value);
         if (!Number.isFinite(numeric)) return 0;
         return ((numeric % 360) + 360) % 360;
+      }
+
+      function roundUpDim(mm) {
+        const numeric = Number(mm);
+        return Number.isFinite(numeric) && numeric > 0 ? Math.ceil(numeric) : 0;
+      }
+
+      function exportSheetFileBase(strip, orderIndex) {
+        const displayIndex = Number.isFinite(Number(orderIndex)) ? Number(orderIndex) + 1 : 1;
+        const idx = String(displayIndex).padStart(2, '0');
+        const width = roundUpDim(strip.sheet_width ?? strip.strip_width);
+        const height = roundUpDim(strip.strip_height);
+        return `${idx}_sheet_${height}x${width}`;
       }
 
       function polylineClosed(entity) {
@@ -1207,7 +1216,8 @@ function registerExportDxfIpc() {
 
       let fileCount = 0;
 
-      for (const strip of strips) {
+      for (let exportIndex = 0; exportIndex < strips.length; exportIndex++) {
+        const strip = strips[exportIndex];
         if (!strip.json_path || !fs.existsSync(strip.json_path)) continue;
 
         let stripData;
@@ -1298,11 +1308,11 @@ function registerExportDxfIpc() {
           });
         });
 
-        const idx = String(strip.index).padStart(2, '0');
         const layerDefs = collectLayerDefs([{ placedItems }]);
         const dxf = buildDXF(sheetEntities, engravings, layerDefs, emitDebug);
-        const outPath = path.join(outputDir, `${safeName}_sheet_${idx}.dxf`);
-        const debugPath = path.join(outputDir, `${safeName}_sheet_${idx}.debug.json`);
+        const fileBase = exportSheetFileBase(strip, exportIndex);
+        const outPath = path.join(outputDir, `${fileBase}.dxf`);
+        const debugPath = path.join(outputDir, `${fileBase}.debug.json`);
         overwriteTextFile(outPath, dxf);
         if (exportSettings.exportDebug) {
           overwriteTextFile(debugPath, JSON.stringify({

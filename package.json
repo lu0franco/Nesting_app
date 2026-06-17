@@ -1,6 +1,6 @@
 {
   "name": "nesting-app",
-  "version": "1.1.2",
+  "version": "1.1.4",
   "description": "DXF Nesting Application",
   "author": "Kenzap Pte Ltd",
   "main": "main.js",
@@ -72,7 +72,8 @@
     },
     "mac": {
       "extendInfo": {
-        "ElectronTeamID": "BY6WQ9N45R"
+        "ElectronTeamID": "BY6WQ9N45R",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "minimumSystemVersion": "12.0.0",
       "extraFiles": [
