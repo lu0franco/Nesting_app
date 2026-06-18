@@ -1,7 +1,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo.white.svg">
-    <img src="assets/logo.dark.svg" alt="Kenzap Nesting" width="520">
+    <img src="assets/logo.dark.svg" alt="Kenzap Nesting" width="200">
   </picture>
 
   <h3>Desktop DXF Nesting for Sheet &amp; Strip Layouts</h3>

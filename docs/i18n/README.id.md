@@ -1,10 +1,10 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="../../assets/logo.white.svg">
-    <img src="../../assets/logo.dark.svg" alt="Kenzap Nesting" width="520">
+    <img src="../../assets/logo.dark.svg" alt="Kenzap Nesting" width="200">
   </picture>
 
-  <h3>Penataan DXF desktop untuk tata letak lembaran dan strip</h3>
+  <h3>Aplikasi desktop untuk nesting DXF pada lembaran dan strip</h3>
   <p>
     Pratinjau langsung · Algoritma penataan 2D terkini · DXF masuk / DXF keluar · Ukiran · macOS, Windows, dan Linux
   </p>
@@ -40,17 +40,17 @@
 
 ## Ikhtisar
 
-**Kenzap Nesting** adalah aplikasi desktop yang menyusun bagian DXF di atas lembaran menggunakan algoritma penataan 2D terkini yang berjalan secara lokal di mesin Anda. Tarik dan lepas gambar Anda, atur jumlah, konfigurasikan jarak dan ukiran, lalu ekspor hasilnya sebagai DXF siap produksi &mdash; tanpa perjalanan ke cloud, tanpa biaya per pekerjaan.
+**Kenzap Nesting** adalah aplikasi desktop yang menata bagian DXF di atas lembaran dengan algoritma nesting 2D modern yang berjalan langsung di mesin Anda. Seret gambar, atur jumlah, sesuaikan jarak dan ukiran, lalu ekspor hasilnya sebagai DXF siap produksi &mdash; tanpa bergantung pada cloud dan tanpa biaya per pekerjaan.
 
-Aplikasi ini dirancang untuk kenyataan praktis operator CNC, laser, plasma, dan waterjet: geometri campuran, file multi-lapisan, batasan jarak dan rotasi yang realistis, serta ukiran yang harus berada di lapisannya sendiri.
+Aplikasi ini dibuat untuk kebutuhan nyata operator CNC, laser, plasma, dan waterjet: geometri campuran, file multi-layer, batas jarak dan rotasi yang realistis, serta ukiran yang harus berada di layer terpisah.
 
 ## Dokumentasi lengkap
 
-Terjemahan ini saat ini merupakan versi ringkas. Untuk instruksi lengkap, panduan build, dan daftar fitur, silakan rujuk README dalam bahasa Inggris:
+Terjemahan ini untuk saat ini masih berupa versi ringkas. Untuk petunjuk lengkap, panduan build, dan daftar fitur, silakan lihat README berbahasa Inggris:
 
 **[Baca dokumentasi lengkap dalam bahasa Inggris →](../../README.md)**
 
-Kami menyambut baik kontribusi untuk terjemahan bahasa Indonesia yang lengkap. Jika Anda ingin membantu, silakan [kirim Pull Request](https://github.com/kenzap/nesting-app/pulls).
+Kontribusi untuk terjemahan bahasa Indonesia yang lebih lengkap sangat diterima. Jika Anda ingin membantu, silakan [kirim Pull Request](https://github.com/kenzap/nesting-app/pulls).
 
 ## Unduhan
 

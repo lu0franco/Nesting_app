@@ -1,10 +1,10 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="../../assets/logo.white.svg">
-    <img src="../../assets/logo.dark.svg" alt="Kenzap Nesting" width="520">
+    <img src="../../assets/logo.dark.svg" alt="Kenzap Nesting" width="200">
   </picture>
 
-  <h3>桌面端 DXF 排版工具 &mdash; 钣金 &amp; 条料布局</h3>
+  <h3>桌面版 DXF 排版工具 &mdash; 适用于板材与条料布局</h3>
   <p>
     实时预览 · 业界领先的 2D 嵌套算法 · DXF 输入 / DXF 输出 · 雕刻 · 支持 macOS、Windows、Linux
   </p>
@@ -40,17 +40,17 @@
 
 ## 简介
 
-**Kenzap Nesting** 是一款桌面应用，在本地使用最先进的 2D 嵌套算法将 DXF 零件排布到板材上。拖入图纸，设置数量，配置间距和雕刻，导出可用于生产的 DXF 文件 &mdash; 无需云端往返，也无需按任务计费。
+**Kenzap Nesting** 是一款桌面应用，使用本地运行的 2D 嵌套算法将 DXF 零件排布到板材上。拖入图纸，设置数量，调整间距和雕刻参数，然后导出可直接用于生产的 DXF 文件 &mdash; 不依赖云端，也不按任务收费。
 
-该工具面向 CNC、激光、等离子和水刀切割的实际需求：混合几何、多层文件、真实间距与旋转约束，以及独立图层的雕刻输出。
+这款工具面向 CNC、激光、等离子和水刀切割的实际生产需求：支持混合几何、多层文件、真实的间距与旋转约束，以及需要放在独立图层上的雕刻内容。
 
 ## 完整文档
 
-本翻译目前为简介版本。完整说明、构建指南和功能列表请参阅英文 README：
+当前这份翻译还是精简版。完整说明、构建指南和功能列表请参阅英文 README：
 
 **[阅读完整英文文档 →](../../README.md)**
 
-我们欢迎社区贡献完整的中文翻译。如果您希望帮助翻译，请[提交 Pull Request](https://github.com/kenzap/nesting-app/pulls)。
+欢迎社区一起完善完整的中文翻译。如果您愿意帮忙，请[提交 Pull Request](https://github.com/kenzap/nesting-app/pulls)。
 
 ## 下载
 

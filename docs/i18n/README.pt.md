@@ -1,10 +1,10 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="../../assets/logo.white.svg">
-    <img src="../../assets/logo.dark.svg" alt="Kenzap Nesting" width="520">
+    <img src="../../assets/logo.dark.svg" alt="Kenzap Nesting" width="200">
   </picture>
 
-  <h3>Aninhamento DXF de desktop para chapas e tiras</h3>
+  <h3>Aplicativo desktop para nesting DXF em chapas e tiras</h3>
   <p>
     Pré-visualização ao vivo · Algoritmo de aninhamento 2D de última geração · DXF de entrada / DXF de saída · Gravação · macOS, Windows e Linux
   </p>
@@ -40,17 +40,17 @@
 
 ## Visão geral
 
-O **Kenzap Nesting** é um aplicativo de desktop que organiza peças DXF em chapas usando um algoritmo de aninhamento 2D de última geração executado localmente em sua máquina. Arraste seus desenhos, defina quantidades, configure espaçamento e gravação, e exporte o resultado como DXF pronto para produção &mdash; sem ida e volta à nuvem, sem cobrança por trabalho.
+O **Kenzap Nesting** é um aplicativo desktop que organiza peças DXF em chapas com um algoritmo moderno de nesting 2D executado localmente na sua máquina. Arraste os desenhos, defina quantidades, ajuste espaçamento e gravação, e exporte o resultado como um DXF pronto para produção &mdash; sem depender da nuvem e sem cobrança por trabalho.
 
-Foi projetado para a realidade prática de operadores de CNC, laser, plasma e corte por jato d'água: geometria mista, arquivos multi-camadas, restrições reais de espaçamento e rotação, e gravação que precisa viver em uma camada própria.
+Ele foi pensado para a rotina real de operadores de CNC, laser, plasma e corte por jato d’água: geometria mista, arquivos com várias camadas, restrições reais de espaçamento e rotação, e gravação que precisa ficar em uma camada própria.
 
 ## Documentação completa
 
-Esta tradução é atualmente uma versão resumida. Para instruções completas, guia de compilação e lista de recursos, consulte o README em inglês:
+Esta tradução, por enquanto, é uma versão resumida. Para ver as instruções completas, o guia de compilação e a lista de recursos, consulte o README em inglês:
 
 **[Leia a documentação completa em inglês →](../../README.md)**
 
-Aceitamos contribuições para uma tradução completa em português. Se quiser ajudar, por favor [envie um Pull Request](https://github.com/kenzap/nesting-app/pulls).
+Contribuições para uma tradução completa em português são bem-vindas. Se quiser ajudar, [envie um Pull Request](https://github.com/kenzap/nesting-app/pulls).
 
 ## Downloads
 

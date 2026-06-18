@@ -1,10 +1,10 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="../../assets/logo.white.svg">
-    <img src="../../assets/logo.dark.svg" alt="Kenzap Nesting" width="520">
+    <img src="../../assets/logo.dark.svg" alt="Kenzap Nesting" width="200">
   </picture>
 
-  <h3>Anidado DXF de escritorio para chapa y tiras</h3>
+  <h3>Aplicación de escritorio para nesting DXF en chapas y tiras</h3>
   <p>
     Vista previa en vivo · Algoritmo de anidado 2D de última generación · DXF de entrada / DXF de salida · Grabado · macOS, Windows y Linux
   </p>
@@ -40,17 +40,17 @@
 
 ## Descripción
 
-**Kenzap Nesting** es una aplicación de escritorio que organiza piezas DXF sobre planchas utilizando un algoritmo de anidado 2D de última generación que se ejecuta localmente en tu equipo. Arrastra los dibujos, establece cantidades, configura espaciado y grabado, y exporta el resultado como un DXF listo para producción &mdash; sin idas y vueltas a la nube ni costos por trabajo.
+**Kenzap Nesting** es una aplicación de escritorio que distribuye piezas DXF sobre chapas mediante un algoritmo moderno de anidado 2D que se ejecuta localmente en tu equipo. Arrastra los dibujos, define cantidades, ajusta separación y grabado, y exporta el resultado como un DXF listo para producción &mdash; sin depender de la nube ni pagar por cada trabajo.
 
-Está diseñado para la realidad práctica de operadores de CNC, láser, plasma y corte por agua: geometría mixta, archivos multi-capa, restricciones reales de espaciado y rotación, y grabado que debe vivir en su propia capa.
+Está pensado para el trabajo real de operadores de CNC, láser, plasma y corte por agua: geometría mixta, archivos multicapa, restricciones reales de separación y giro, y grabado que debe ir en su propia capa.
 
 ## Documentación completa
 
-Esta traducción es actualmente una versión resumida. Para instrucciones completas, guía de compilación y lista de funciones, consulta el README en inglés:
+Esta traducción es por ahora una versión resumida. Para ver las instrucciones completas, la guía de compilación y la lista de funciones, consulta el README en inglés:
 
 **[Leer la documentación completa en inglés →](../../README.md)**
 
-Recibimos con gusto contribuciones para una traducción completa al español. Si deseas ayudar, por favor [envía un Pull Request](https://github.com/kenzap/nesting-app/pulls).
+Las contribuciones para una traducción completa al español son bienvenidas. Si quieres ayudar, puedes [enviar un Pull Request](https://github.com/kenzap/nesting-app/pulls).
 
 ## Descargas
 
