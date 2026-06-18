@@ -90,6 +90,20 @@ function buildApplicationMenu({ isDevMode = false } = {}) {
         { role: 'minimize' },
         { role: 'zoom' },
         { type: 'separator' },
+        {
+          label: productName,
+          accelerator: 'CmdOrCtrl+1',
+          click: () => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              if (mainWindow.isMinimized()) mainWindow.restore();
+              if (!mainWindow.isVisible()) mainWindow.show();
+              mainWindow.focus();
+            } else {
+              createWindow({ isDevMode });
+            }
+          },
+        },
+        { type: 'separator' },
         { role: 'front' },
       ],
     },
@@ -223,6 +237,16 @@ function createWindow({ isDevMode = false, minimalStartup = false } = {}) {
   }
 
   mainWindow = new BrowserWindow(windowOptions);
+  // On macOS, closing the window should hide it (preserving in-flight nesting
+  // work in the renderer) rather than destroying the window. Cmd+Q still quits
+  // properly because `before-quit` flips `app.isQuiting` first.
+  mainWindow.on('close', (event) => {
+    if (process.platform === 'darwin' && !app.isQuiting && !mainWindow.isDestroyed()) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+  mainWindow.on('closed', () => { mainWindow = null; });
 
   if (minimalStartup) {
     mainWindow.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(`<!doctype html>
@@ -269,12 +293,18 @@ function initializeApp({ isDevMode = false, minimalStartup = false } = {}) {
     createWindow({ isDevMode, minimalStartup });
   });
 
+  app.on('before-quit', () => { app.isQuiting = true; });
+
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
   });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    } else {
       createWindow({ isDevMode, minimalStartup });
     }
   });

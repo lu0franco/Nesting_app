@@ -167,6 +167,8 @@ function registerExportDxfIpc() {
           '#44DDDD': 4,
           '#4488FF': 5,
           '#DD44DD': 6,
+          '#0000FF': 5,
+          '#FFFF00': 2,
           '#CCCCCC': 7,
           '#888888': 8,
         };
