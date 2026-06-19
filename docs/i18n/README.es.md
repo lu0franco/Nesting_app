@@ -40,13 +40,13 @@
 
 ## Descripción
 
-**Kenzap Nesting** es una aplicación de escritorio que distribuye piezas DXF sobre chapas mediante un algoritmo moderno de anidado 2D que se ejecuta localmente en tu equipo. Arrastra los dibujos, define cantidades, ajusta separación y grabado, y exporta el resultado como un DXF listo para producción &mdash; sin depender de la nube ni pagar por cada trabajo.
+**Kenzap Nesting** es una aplicación de escritorio que distribuye piezas DXF sobre chapas mediante un algoritmo moderno de anidado 2D que se ejecuta localmente en tu equipo. Arrastra los dibujos, define cantidades, ajusta la separación y el grabado, y exporta el resultado como un DXF listo para producción &mdash; sin depender de la nube ni pagar por cada trabajo.
 
-Está pensado para el trabajo real de operadores de CNC, láser, plasma y corte por agua: geometría mixta, archivos multicapa, restricciones reales de separación y giro, y grabado que debe ir en su propia capa.
+Está pensado para el trabajo diario de operadores de CNC, láser, plasma y corte por agua: geometría mixta, archivos multicapa, restricciones reales de separación y giro, y grabado que debe ir en su propia capa.
 
 ## Documentación completa
 
-Esta traducción es por ahora una versión resumida. Para ver las instrucciones completas, la guía de compilación y la lista de funciones, consulta el README en inglés:
+Esta traducción es por ahora una versión resumida. Para ver las instrucciones completas, la guía de compilación y la lista completa de funciones, consulta el README en inglés:
 
 **[Leer la documentación completa en inglés →](../../README.md)**
 

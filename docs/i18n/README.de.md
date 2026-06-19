@@ -4,7 +4,7 @@
     <img src="../../assets/logo.dark.svg" alt="Kenzap Nesting" width="200">
   </picture>
 
-  <h3>Desktop-App für DXF-Nesting auf Tafeln und Streifen</h3>
+  <h3>Desktop-App für DXF-Nesting auf Tafeln und Streifenmaterial</h3>
   <p>
     Live-Vorschau · Hochmoderner 2D-Nesting-Algorithmus · DXF-Eingabe / DXF-Ausgabe · Gravur · macOS, Windows &amp; Linux
   </p>
@@ -40,13 +40,13 @@
 
 ## Überblick
 
-**Kenzap Nesting** ist eine Desktop-App, die DXF-Teile mit einem modernen 2D-Nesting-Algorithmus lokal auf Ihrem Rechner auf Tafeln anordnet. Zeichnungen hineinziehen, Stückzahlen festlegen, Abstände und Gravur einstellen und das Ergebnis als produktionsreifes DXF exportieren &mdash; ohne Cloud-Umweg und ohne Abrechnung pro Auftrag.
+**Kenzap Nesting** ist eine Desktop-App, die DXF-Teile mit einem modernen 2D-Nesting-Algorithmus lokal auf Ihrem Rechner auf Tafeln anordnet. Zeichnungen per Drag-and-drop hineinziehen, Stückzahlen festlegen, Abstände und Gravur einstellen und das Ergebnis als produktionsreifes DXF exportieren &mdash; ohne Cloud-Umweg und ohne Abrechnung pro Auftrag.
 
-Die Anwendung ist auf den realen Produktionsalltag mit CNC-, Laser-, Plasma- und Wasserstrahlanlagen ausgelegt: gemischte Geometrie, mehrlagige Dateien, realistische Abstands- und Rotationsvorgaben sowie Gravuren, die auf einer eigenen Ebene liegen müssen.
+Die Anwendung ist auf den realen Produktionsalltag mit CNC-, Laser-, Plasma- und Wasserstrahlanlagen ausgelegt: gemischte Geometrien, mehrlagige Dateien, realistische Abstands- und Rotationsvorgaben sowie Gravuren, die auf einer eigenen Ebene liegen müssen.
 
 ## Vollständige Dokumentation
 
-Diese Übersetzung ist derzeit nur eine Kurzfassung. Die vollständigen Anleitungen, die Build-Dokumentation und die komplette Funktionsübersicht finden Sie in der englischen README:
+Diese Übersetzung ist derzeit nur eine Kurzfassung. Die vollständige Anleitung, die Build-Dokumentation und die komplette Funktionsübersicht finden Sie in der englischen README:
 
 **[Vollständige englische Dokumentation lesen →](../../README.md)**
 

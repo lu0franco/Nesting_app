@@ -40,9 +40,9 @@
 
 ## Ikhtisar
 
-**Kenzap Nesting** adalah aplikasi desktop yang menata bagian DXF di atas lembaran dengan algoritma nesting 2D modern yang berjalan langsung di mesin Anda. Seret gambar, atur jumlah, sesuaikan jarak dan ukiran, lalu ekspor hasilnya sebagai DXF siap produksi &mdash; tanpa bergantung pada cloud dan tanpa biaya per pekerjaan.
+**Kenzap Nesting** adalah aplikasi desktop yang menata bagian DXF di atas lembaran dengan algoritma nesting 2D modern yang berjalan langsung di komputer Anda. Seret gambar, atur jumlah, sesuaikan jarak dan ukiran, lalu ekspor hasilnya sebagai DXF siap produksi &mdash; tanpa bergantung pada cloud dan tanpa biaya per pekerjaan.
 
-Aplikasi ini dibuat untuk kebutuhan nyata operator CNC, laser, plasma, dan waterjet: geometri campuran, file multi-layer, batas jarak dan rotasi yang realistis, serta ukiran yang harus berada di layer terpisah.
+Aplikasi ini dibuat untuk kebutuhan nyata operator CNC, laser, plasma, dan waterjet: geometri campuran, file multi-layer, batas jarak dan rotasi yang realistis, serta ukiran yang memang perlu ditempatkan di layer terpisah.
 
 ## Dokumentasi lengkap
 

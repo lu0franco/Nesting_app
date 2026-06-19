@@ -40,7 +40,7 @@
 
 ## Vue d'ensemble
 
-**Kenzap Nesting** est une application de bureau qui place des pièces DXF sur des tôles à l’aide d’un algorithme moderne d’imbrication 2D exécuté localement sur votre machine. Glissez vos dessins, définissez les quantités, réglez l’espacement et la gravure, puis exportez un DXF prêt pour la production &mdash; sans dépendre du cloud ni payer à la tâche.
+**Kenzap Nesting** est une application de bureau qui place des pièces DXF sur des tôles à l’aide d’un algorithme moderne d’imbrication 2D exécuté localement sur votre machine. Glissez-déposez vos dessins, définissez les quantités, réglez l’espacement et la gravure, puis exportez un DXF prêt pour la production &mdash; sans dépendre du cloud ni payer à la tâche.
 
 L’application est pensée pour la réalité du terrain en CNC, laser, plasma et jet d’eau : géométrie mixte, fichiers multicouches, contraintes réelles d’espacement et de rotation, et gravure à placer sur une couche dédiée.
 
