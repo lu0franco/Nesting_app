@@ -44,6 +44,7 @@
           height: sheet.height ?? null,
           widthMode: sheet.widthMode || 'fixed',
           material: sheet.material || '',
+          thickness: sheet.thickness || '',
         })),
       };
     }

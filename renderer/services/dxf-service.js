@@ -75,6 +75,11 @@
         ...shape,
         qty: file.qty || shape.qty || 1,
       }));
+      // Extraer material y espesor desde el nombre del archivo
+      const { parseMaterialAndThickness } = globalScope.NestHelpers;
+      const { material, thickness } = parseMaterialAndThickness(file.name);
+      file.material = material || '';
+      file.thickness = thickness || '';
       file.layers = synthesizeEngravingLayer(parsed.layers || [], settings, file.id);
       file._multiSketchDetection = !!settings.multiSketchDetection;
       file._sketchContourMethod = sketchContourMethod;

@@ -143,10 +143,40 @@
           showStartRequirementsWarning('Add DXF parts and at least one sheet, then press Run.');
           return;
         }
-        if (!hasFiles) {
+                if (!hasFiles) {
           showStartRequirementsWarning('Add one or more DXF parts before running nesting.');
           return;
         }
+
+        // Validación de material: las piezas deben coincidir con la sheet
+        const sheetMaterial = state.sheets[0]?.material || '';
+        const sheetThickness = state.sheets[0]?.thickness || '';
+        
+        // Solo validar si la sheet tiene al menos material o espesor definido
+        if (sheetMaterial || sheetThickness) {
+          const mismatched = state.files.filter(file => {
+            const fm = file.material || '';
+            const ft = file.thickness || '';
+            
+            // Si la pieza no tiene material ni espesor, no puede ir en una sheet que sí tiene
+            if (!fm && !ft) return true;
+            
+            // Comparar material si la sheet lo tiene
+            if (sheetMaterial && fm !== sheetMaterial) return true;
+            
+            // Comparar espesor si la sheet lo tiene
+            if (sheetThickness && ft !== sheetThickness) return true;
+            
+            return false;
+          });
+          
+          if (mismatched.length > 0) {
+            const names = mismatched.map(f => f.name).join(', ');
+            showStartRequirementsWarning(`Material mismatch: ${names} do not match sheet material/thickness.`);
+            return;
+          }
+        }
+
         if (!hasSheets) {
           showStartRequirementsWarning('Add at least one sheet before running nesting.');
           return;

@@ -21,6 +21,7 @@
           : s.widthMode === 'max'
             ? 'Auto sheets · length capped'
             : 'Auto sheets · fixed size';
+        const matLabel = [s.material, s.thickness].filter(Boolean).join(' · ') || 'No material';
         const li = document.createElement('li');
         li.className = 'sheet-item';
         li.innerHTML = `
@@ -31,7 +32,7 @@
           </div>
           <div class="sheet-info">
             <div class="sheet-dims">${widthLabel}</div>
-            <div class="sheet-material">${s.material || 'No material'} · ${modeLabel}</div>
+            <div class="sheet-material">${matLabel} · ${modeLabel}</div>
           </div>
           <button class="file-remove" data-id="${s.id}" title="Remove">
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none">

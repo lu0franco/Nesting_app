@@ -2,7 +2,7 @@
 
 (function defineFilesPane(globalScope) {
   function createFilesPane({ state, dom, schedulePersistJobState, hydrateFileShapesForList }) {
-    const { uid, formatBytes, effectiveFileQty } = globalScope.NestHelpers;
+    const { uid, formatBytes, effectiveFileQty, parseMaterialAndThickness } = globalScope.NestHelpers;
 
     // Rebuilds the DXF files sidebar so it matches current state.
     // Shows each file's shape count, size, and total qty, wires up the ✕ remove buttons,
@@ -22,6 +22,7 @@
           <div class="file-info">
             <div class="file-name" title="${f.name}">${f.name}</div>
             <div class="file-size">${shapeLabel} · ${formatBytes(f.size)}</div>
+            ${(f.material || f.thickness) ? '<div class="file-material">' + [f.material, f.thickness].filter(Boolean).join(' · ') + '</div>' : ''}
           </div>
           <div class="file-qty-total">${effectiveFileQty(f)}</div>
           <button class="file-remove" data-id="${f.id}" title="Remove">

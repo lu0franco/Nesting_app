@@ -201,6 +201,25 @@
     return `nesting-job-${stamp}`;
   }
 
+  /**
+   * Extrae material y espesor desde el nombre de archivo DXF.
+   * Formato esperado: Nombre_Material_Espesor.dxf
+   * Ejemplo: BasePlate_Steel_3mm.dxf -> { material: 'Steel', thickness: '3mm' }
+   */
+   function parseMaterialAndThickness(fileName) {
+    const clean = String(fileName || '')
+      .replace(/\.dxf$/i, '')   // quita .dxf
+      .trim();
+    const parts = clean.split('_');
+    if (parts.length < 3) {
+      // Si no tiene suficientes segmentos, no hay material/espesor
+      return { material: '', thickness: '' };
+    }
+    const thickness = parts.pop();   // último segmento: 3mm
+    const material = parts.pop();    // penúltimo segmento: Steel
+    return { material: String(material), thickness: String(thickness) };
+  }
+
   globalScope.NestHelpers = {
     uid,
     formatBytes,
@@ -214,5 +233,6 @@
     clonePlain,
     effectiveFileQty,
     buildJobName,
+    parseMaterialAndThickness,   // <-- AGREGADO
   };
 })(window);

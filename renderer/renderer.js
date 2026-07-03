@@ -57,6 +57,7 @@ const dom = {
   sheetWidthMode: document.getElementById('sheetWidthMode'),
   sheetModeHelp: document.getElementById('sheetModeHelp'),
   sheetMaterial: document.getElementById('sheetMaterial'),
+  sheetThickness: document.getElementById('sheetThickness'),
   zoomIn: document.getElementById('zoomIn'),
   zoomOut: document.getElementById('zoomOut'),
   fitView: document.getElementById('fitView'),

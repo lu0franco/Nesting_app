@@ -29,6 +29,7 @@
       dom.sheetHeight.value = '1250';
       dom.sheetWidth.value = '3000';
       dom.sheetMaterial.value = '';
+      if (dom.sheetThickness) dom.sheetThickness.value = '';
       dom.confirmSheet.textContent = 'Add Sheet';
       updateSheetModeControls();
     }
@@ -52,6 +53,7 @@
       dom.sheetHeight.value = sheet.height ?? 1250;
       dom.sheetWidth.value = sheet.width ?? 3000;
       dom.sheetMaterial.value = sheet.material || '';
+      if (dom.sheetThickness) dom.sheetThickness.value = sheet.thickness || '';
       dom.confirmSheet.textContent = 'Save Sheet';
       updateSheetModeControls();
       dom.sheetModal.classList.add('open');
@@ -108,9 +110,10 @@
         const w = mode === 'unlimited' ? null : parseInt(dom.sheetWidth.value);
         const h = parseInt(dom.sheetHeight.value);
         const mat = dom.sheetMaterial.value.trim();
+        const thick = dom.sheetThickness ? dom.sheetThickness.value.trim() : '';
         if (!h || (mode !== 'unlimited' && !w)) return;
 
-        const sheetData = { width: w, height: h, widthMode: mode, material: mat };
+        const sheetData = { width: w, height: h, widthMode: mode, material: mat, thickness: thick };
 
         if (state.editingSheetId) {
           state.sheets = state.sheets.map(sheet =>
