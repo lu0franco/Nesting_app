@@ -135,8 +135,8 @@
 
     // In fixed-width mode the solver's viewBox and frame rectangles are sized to the solver's
     // strip width, not the user's target. This rewrites those elements in-place and re-serialises
-    // the SVG so that what gets rendered matches the configured sheet width.
-    function adjustSvgForFixedWidth(svg, strip, targetWidth) {
+    // the SVG so that what gets rendered matches the configured sheet width/height.
+    function adjustSvgForFixedWidth(svg, strip, targetWidth, sheet = currentSheetConfig()) {
       if (!svg || !Number.isFinite(targetWidth) || targetWidth <= 0) return svg;
 
       const parser = new DOMParser();
@@ -153,8 +153,10 @@
       };
       if (!Number.isFinite(vb.w) || vb.w <= 0 || !Number.isFinite(vb.h) || vb.h <= 0) return svg;
 
-      const sheetHeight = Number.isFinite(Number(strip?.sheet_height)) ? Number(strip.sheet_height) : Number(sheet?.height);
-      const targetHeight = Number.isFinite(sheetHeight) && sheetHeight > 0 ? sheetHeight : vb.h;
+      const configuredHeight = Number.isFinite(Number(strip?.sheet_height))
+        ? Number(strip.sheet_height)
+        : Number(sheet?.height);
+      const targetHeight = Number.isFinite(configuredHeight) && configuredHeight > 0 ? configuredHeight : vb.h;
       const previewMinX = vb.x - SVG_PREVIEW_MARGIN_X;
       const previewMinY = vb.y - SVG_PREVIEW_MARGIN_Y;
       const previewWidth = targetWidth + (SVG_PREVIEW_MARGIN_X * 2);
@@ -165,7 +167,6 @@
       root.setAttribute('height', `${previewHeight}`);
 
       const sourceWidth = Number(strip?.strip_width) || vb.w;
-      const sourceHeight = Number(strip?.strip_height) || vb.h;
       const frameOriginX = 0;
       let normalizedAnyFrame = false;
 
@@ -198,7 +199,7 @@
         if (!(matchesSource || matchesTarget) || Math.abs(x - vb.x) > 0.1 && Math.abs(x) > 0.1) return;
         rectEl.setAttribute('x', '0');
         rectEl.setAttribute('width', `${targetWidth}`);
-        rectEl.setAttribute('height', `${sourceHeight}`);
+        rectEl.setAttribute('height', `${targetHeight}`);
         normalizedAnyFrame = true;
       });
 
@@ -210,7 +211,7 @@
           const height = rect.y2 - rect.y1;
           if (Number.isFinite(width) && Number.isFinite(height)
             && (Math.abs(width - sourceWidth) <= 0.1 || normalizedAnyFrame || Math.abs(width - targetWidth) <= 0.1)) {
-            dashedOutline.setAttribute('d', formatRectPathData(0, rect.y0, targetWidth, height));
+            dashedOutline.setAttribute('d', formatRectPathData(0, rect.y0, targetWidth, targetHeight));
           }
         }
       }
@@ -220,7 +221,7 @@
         fallbackFrame.setAttribute('x', '0');
         fallbackFrame.setAttribute('y', String(vb.y));
         fallbackFrame.setAttribute('width', String(targetWidth));
-        fallbackFrame.setAttribute('height', String(vb.h));
+        fallbackFrame.setAttribute('height', String(targetHeight));
         fallbackFrame.setAttribute('fill', 'none');
         fallbackFrame.setAttribute('stroke', '#2e3550');
         fallbackFrame.setAttribute('stroke-width', '1');
@@ -260,7 +261,7 @@
       styled = styled.replace(/<g\b[^>]*id="collision_lines"[^>]*>[\s\S]*?<\/g>/gi, '');
       const targetWidth = strip ? displayStripWidth(strip, sheet) : null;
       if (targetWidth) {
-        styled = adjustSvgForFixedWidth(styled, strip, targetWidth);
+        styled = adjustSvgForFixedWidth(styled, strip, targetWidth, sheet);
       }
       const viewBoxMatch = styled.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/i);
       const vb = viewBoxMatch
