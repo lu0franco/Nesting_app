@@ -35,6 +35,8 @@
           qty: effectiveFileQty(file),
           shapes: clonePlain(file.shapes || null),
           layers: clonePlain(file.layers || null),
+          material: file.material || '',
+          thickness: file.thickness || '',
           _multiSketchDetection: typeof file._multiSketchDetection === 'boolean' ? file._multiSketchDetection : null,
           _sketchContourMethod: file._sketchContourMethod || null,
         })),
@@ -88,6 +90,8 @@
         ? result.state.files.map(file => ({
             ...file,
             qty: effectiveFileQty(file),
+            material: (file.material || '').trim(),
+            thickness: (file.thickness || '').trim(),
             _multiSketchDetection: typeof file?._multiSketchDetection === 'boolean' ? file._multiSketchDetection : null,
             _sketchContourMethod: file?._sketchContourMethod || null,
           }))

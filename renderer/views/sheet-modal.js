@@ -35,10 +35,8 @@
     }
 
     // Opens the sheet modal in add mode (blank form) or edit mode (pre-filled from an existing sheet).
-    // Guards against adding a second sheet since only one is currently supported.
     function openSheetEditor(sheetId = null) {
       if (!sheetId) {
-        if (state.sheets.length >= 1) return;
         resetSheetForm();
         dom.sheetModal.classList.add('open');
         return;
@@ -120,11 +118,6 @@
             sheet.id === state.editingSheetId ? { ...sheet, ...sheetData } : sheet
           );
         } else {
-          if (state.sheets.length >= 1) {
-            renderSheets();
-            closeSheetDialog();
-            return;
-          }
           state.sheets.push({ id: globalScope.NestHelpers.uid(), ...sheetData });
         }
         renderSheets();

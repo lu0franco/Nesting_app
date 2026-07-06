@@ -111,12 +111,34 @@
       const settings = getCurrentNestingSettings();
       const allowedOrientations = buildAllowedOrientations(settings.rotationStep);
 
-      for (const file of state.files) {
-        await ensureFileShapes(file);
-        file.layers = synthesizeEngravingLayer(file.layers || [], settings, file.id);
-      }
+      const normalizeGroupKey = (material, thickness) => {
+        const mat = String(material || '').trim();
+        const thick = String(thickness || '').trim();
+        if (mat && thick) return `${mat}__${thick}`;
+        return mat || thick || 'unspecified';
+      };
 
-      for (const file of state.files) {
+      const sheetKeys = state.sheets.map(sheet => normalizeGroupKey(sheet.material, sheet.thickness));
+      const orderedFiles = [];
+      const remainingFiles = [...state.files];
+
+      for (const sheetKey of sheetKeys) {
+        let matchedAny = false;
+        for (let i = 0; i < remainingFiles.length; i++) {
+          const file = remainingFiles[i];
+          const fileKey = normalizeGroupKey(file.material, file.thickness);
+          if (fileKey === sheetKey) {
+            orderedFiles.push(file);
+            remainingFiles.splice(i, 1);
+            i -= 1;
+            matchedAny = true;
+          }
+        }
+        if (matchedAny && sheetKey !== 'unspecified') continue;
+      }
+      orderedFiles.push(...remainingFiles);
+
+      for (const file of orderedFiles) {
         const shapes = (await ensureFileShapes(file)).filter(shape => shape.visible !== false);
         shapes.forEach(shape => {
           const points = sanitizePolygonPoints(shape.polygonPoints);
@@ -127,6 +149,8 @@
             id: itemId,
             demand: Math.max(1, parseInt(shape.qty || 1, 10)),
             dxf: file.path || file.name,
+            source_material: file.material || '',
+            source_thickness: file.thickness || '',
             allowed_orientations: [...allowedOrientations],
             shape: {
               type: 'simple_polygon',
@@ -138,6 +162,8 @@
             source_file: file.path || file.name,
             source_name: file.name,
             source_shape_id: shape.id,
+            source_material: file.material || '',
+            source_thickness: file.thickness || '',
             part_label: partLabelFromName(file.name),
             layers: clonePlain(synthesizeEngravingLayer(file.layers || [], settings, file.id)),
             entities: clonePlain(shape.exportEntities || []),
@@ -169,6 +195,7 @@
           width_mode: sheet.widthMode || 'fixed',
           quantity: 'auto',
           material: sheet.material || '',
+          thickness: sheet.thickness || '',
         })),
         strip_height: state.sheets[0]?.height || 0,
       };

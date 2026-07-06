@@ -57,6 +57,7 @@
       const newlyAdded = [];
       fileObjs.forEach(f => {
         if (!state.files.find(x => x.name === f.name)) {
+          const { material, thickness } = parseMaterialAndThickness(f.name);
           const file = {
             id: uid(),
             name: f.name,
@@ -64,6 +65,8 @@
             path: f.path || null,
             bookmark: f.bookmark || null,
             qty: 1,
+            material,
+            thickness,
           };
           state.files.push(file);
           newlyAdded.push(file);

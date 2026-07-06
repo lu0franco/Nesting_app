@@ -8,9 +8,8 @@
     function renderSheets() {
       dom.sheetList.innerHTML = '';
       if (dom.addSheetBtn) {
-        const allowAnotherSheet = state.sheets.length === 0;
-        dom.addSheetBtn.style.visibility = allowAnotherSheet ? 'visible' : 'hidden';
-        dom.addSheetBtn.disabled = !allowAnotherSheet;
+        dom.addSheetBtn.style.visibility = 'visible';
+        dom.addSheetBtn.disabled = false;
       }
       state.sheets.forEach(s => {
         const widthLabel = s.widthMode === 'unlimited'

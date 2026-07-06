@@ -61,6 +61,7 @@ const dom = {
   zoomIn: document.getElementById('zoomIn'),
   zoomOut: document.getElementById('zoomOut'),
   fitView: document.getElementById('fitView'),
+  toggleFullSheet: document.getElementById('toggleFullSheet'),
   exportModal: document.getElementById('exportModal'),
   exportClose: document.getElementById('exportClose'),
   exportCancel: document.getElementById('exportCancel'),
@@ -82,6 +83,9 @@ const dom = {
 // handled inside createAppStore so the rest of the app doesn't have to think
 // about it.
 const { state, schedulePersistJobState, hydrateJobState } = window.NestStore.createAppStore();
+// Expose the live app state for quick debugging in DevTools: access
+// `window.__APP_STATE` and inspect `nestResult` or specific strips.
+try { window.__APP_STATE = state; } catch (e) { /* ignore in locked-down environments */ }
 const { DEFAULT_ENGRAVING_COLOR } = window.NestConstants;
 const { FALLBACK_PALETTE = [] } = window.NestDxfLayerService || {};
 const { partLabelFromName } = window.NestHelpers;

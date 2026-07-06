@@ -23,6 +23,7 @@
       let nestInterval = null;
       let sparrowRunAborted = false;
       let activeSparrowRunId = null;
+      let activeGroupSheets = null;
 
     // Parses raw stdout/stderr from the solver binary into a clean one-line message.
     // Prefers explicit "error:" lines, falls back to the last non-info line, then to raw text.
@@ -58,6 +59,151 @@
       dom.nestStats.title = '';
     }
 
+    function normalizeGroupKey(material, thickness) {
+      return globalScope.NestHelpers.normalizeGroupKey(material, thickness);
+    }
+
+    function sheetMatchesFile(sheet, file) {
+      const fm = globalScope.NestHelpers.normalizeMaterialOrThickness(file.material);
+      const ft = globalScope.NestHelpers.normalizeMaterialOrThickness(file.thickness);
+      const sm = globalScope.NestHelpers.normalizeMaterialOrThickness(sheet.material);
+      const st = globalScope.NestHelpers.normalizeMaterialOrThickness(sheet.thickness);
+      const materialMatch = !sm || sm === fm;
+      const thicknessMatch = !st || st === ft;
+      return materialMatch && thicknessMatch;
+    }
+
+    function computeMaxStripLengthForSheets(sheets) {
+      if (!Array.isArray(sheets) || !sheets.length) return null;
+      const hasUnlimited = sheets.some(sheet => sheet.widthMode === 'unlimited');
+      if (hasUnlimited) return null;
+      const widths = sheets
+        .map(sheet => Number(sheet.width))
+        .filter(value => Number.isFinite(value) && value > 0);
+      if (!widths.length) return null;
+      return Math.max(...widths);
+    }
+
+    function buildNestingGroupPayloads(payload) {
+      const sheetGroups = new Map();
+      const orderedGroupKeys = [];
+      for (const sheet of state.sheets) {
+        const key = normalizeGroupKey(sheet.material, sheet.thickness);
+        if (!sheetGroups.has(key)) {
+          sheetGroups.set(key, []);
+          orderedGroupKeys.push(key);
+        }
+        sheetGroups.get(key).push(sheet);
+      }
+
+      const groupedItems = new Map();
+      for (const item of payload.items || []) {
+        const fileMaterial = String(item.source_material || '').trim();
+        const fileThickness = String(item.source_thickness || '').trim();
+        let assignedKey = null;
+
+        for (const groupKey of orderedGroupKeys) {
+          const sheets = sheetGroups.get(groupKey) || [];
+          if (sheets.some(sheet => sheetMatchesFile(sheet, { material: fileMaterial, thickness: fileThickness }))) {
+            assignedKey = groupKey;
+            break;
+          }
+        }
+
+        if (assignedKey === null) {
+          assignedKey = orderedGroupKeys.length ? orderedGroupKeys[orderedGroupKeys.length - 1] : normalizeGroupKey(fileMaterial, fileThickness) || 'unspecified';
+        }
+
+        if (!groupedItems.has(assignedKey)) groupedItems.set(assignedKey, []);
+        groupedItems.get(assignedKey).push(item);
+      }
+
+      const payloads = [];
+      for (const [groupKey, groupItems] of groupedItems) {
+        if (!groupItems || !groupItems.length) continue;
+        const groupSheets = sheetGroups.get(groupKey) || [];
+        const localItems = groupItems.map((originalItem, index) => ({
+          ...originalItem,
+          id: index,
+        }));
+
+        payloads.push({
+          name: `${payload.name}_${groupKey}`,
+          settings: payload.settings,
+          items: localItems,
+          sheets: (groupSheets.length ? groupSheets : payload.sheets).map(sheet => ({
+            id: sheet.id,
+            width: sheet.widthMode === 'unlimited' ? null : sheet.width,
+            height: sheet.height,
+            width_mode: sheet.widthMode || 'fixed',
+            quantity: 'auto',
+            material: sheet.material || '',
+            thickness: sheet.thickness || '',
+          })),
+          strip_height: groupSheets[0]?.height || payload.strip_height || 0,
+          meta: { groupKey },
+        });
+      }
+
+      return payloads;
+    }
+
+    function annotateStripsWithSheetMeta(strips, sheets, groupInputPath = null, groupItemIdMap = null) {
+      const lastSheet = (Array.isArray(sheets) && sheets.length) ? sheets[sheets.length - 1] : {};
+      return (Array.isArray(strips) ? strips : []).map((strip, index) => {
+        const sheet = sheets[index] || lastSheet || {};
+        const widthMode = sheet.width_mode || sheet.widthMode || 'fixed';
+        const widthValue = widthMode === 'fixed'
+          ? Number(sheet.width)
+          : Number(strip?.strip_width) || Number(sheet.width);
+
+        return {
+          ...strip,
+          sheet_material: sheet.material || '',
+          sheet_thickness: sheet.thickness || '',
+          sheet_width_mode: widthMode,
+          sheet_width: Number.isFinite(widthValue) ? widthValue : Number(strip?.strip_width) || 0,
+          sheet_height: Number.isFinite(strip?.strip_height) ? strip.strip_height : Number(sheet.height) || 0,
+          sheet_id: sheet.id || null,
+          group_input_path: groupInputPath || null,
+          group_item_id_map: groupItemIdMap ? { ...groupItemIdMap } : null,
+        };
+      });
+    }
+
+    async function waitForSparrowCompletion(runId, groupIndex, totalGroups) {
+      while (true) {
+        if (!window.electronAPI?.pollSparrow) {
+          throw new Error('Sparrow polling is not available');
+        }
+
+        const result = await window.electronAPI.pollSparrow(runId);
+        if (!result?.success) {
+          throw new Error(result?.error || 'Failed to poll Sparrow run');
+        }
+
+        if (result.status === 'completed') {
+          return result;
+        }
+
+        if (result.status === 'error') {
+          throw new Error(result.error || 'Sparrow failed');
+        }
+
+        if (result.status === 'stopped') {
+          throw new Error('Sparrow run was stopped');
+        }
+
+        if (sparrowRunAborted) {
+          await window.electronAPI.stopSparrow(runId);
+          throw new Error('Nesting run aborted');
+        }
+
+        dom.nestStats.textContent = `Running group ${groupIndex} of ${totalGroups}…`;
+        await new Promise(resolve => window.setTimeout(resolve, 500));
+      }
+    }
+
     // Called on a 500ms interval while the solver is running to fetch the latest result.
     // Updates state and re-renders the canvas whenever new strips arrive, and cleans up
     // the interval on completion, error, or stop.
@@ -73,8 +219,10 @@
         const previousCount = state.nestResult?.strips?.length || 0;
         const previousIndex = state.activeStripIndex || 0;
         state.nestResult = result.summary;
+        state.nestResult.groupSheets = activeGroupSheets || state.nestResult.groupSheets || null;
         if (result.inputPath) state.nestInputPath = result.inputPath;
 
+        const activeWasTrackingNewest = previousCount > 0 && previousIndex === previousCount - 1;
         if (previousCount === 0) {
           // First time strips become available this run. Default to sheet 1
           // so the user lands on the natural starting point. (Barrier mode
@@ -82,10 +230,10 @@
           // newest-strip auto-follow below would jump straight to the last
           // tab.)
           state.activeStripIndex = 0;
-        } else if (state.nestResult.strips.length > previousCount) {
+        } else if (state.nestResult.strips.length > previousCount && activeWasTrackingNewest) {
           // Pre-bucket mode: Sparrow finishes one sheet at a time. Follow
-          // the newest one so the user sees the sheet currently being
-          // populated instead of staying pinned to an older tab.
+          // the newest one only when the user was already on the latest
+          // sheet, so manual tab selection isn't overridden.
           state.activeStripIndex = state.nestResult.strips.length - 1;
         } else if (!state.nestResult.strips[previousIndex]) {
           state.activeStripIndex = 0;
@@ -148,31 +296,29 @@
           return;
         }
 
-        // Validación de material: las piezas deben coincidir con la sheet
-        const sheetMaterial = state.sheets[0]?.material || '';
-        const sheetThickness = state.sheets[0]?.thickness || '';
-        
-        // Solo validar si la sheet tiene al menos material o espesor definido
-        if (sheetMaterial || sheetThickness) {
+        // Validación de material: las piezas deben coincidir con alguna sheet definida.
+        const { normalizeMaterialOrThickness } = globalScope.NestHelpers;
+        const sheetConstraints = state.sheets.map(sheet => ({
+          material: normalizeMaterialOrThickness(sheet.material),
+          thickness: normalizeMaterialOrThickness(sheet.thickness),
+        }));
+        const hasAnyConstraint = sheetConstraints.some(sheet => sheet.material || sheet.thickness);
+
+        if (hasAnyConstraint) {
           const mismatched = state.files.filter(file => {
-            const fm = file.material || '';
-            const ft = file.thickness || '';
-            
-            // Si la pieza no tiene material ni espesor, no puede ir en una sheet que sí tiene
-            if (!fm && !ft) return true;
-            
-            // Comparar material si la sheet lo tiene
-            if (sheetMaterial && fm !== sheetMaterial) return true;
-            
-            // Comparar espesor si la sheet lo tiene
-            if (sheetThickness && ft !== sheetThickness) return true;
-            
-            return false;
+            const fm = normalizeMaterialOrThickness(file.material);
+            const ft = normalizeMaterialOrThickness(file.thickness);
+
+            return !sheetConstraints.some(sheet => {
+              const materialMatch = !sheet.material || sheet.material === fm;
+              const thicknessMatch = !sheet.thickness || sheet.thickness === ft;
+              return materialMatch && thicknessMatch;
+            });
           });
-          
+
           if (mismatched.length > 0) {
             const names = mismatched.map(f => f.name).join(', ');
-            showStartRequirementsWarning(`Material mismatch: ${names} do not match sheet material/thickness.`);
+            showStartRequirementsWarning(`Material mismatch: ${names} do not match any sheet material/thickness group.`);
             return;
           }
         }
@@ -209,23 +355,17 @@
         syncExportButton();
 
         try {
-          const primarySheet = state.sheets[0] || {};
           const settings = getCurrentNestingSettings();
           const partSpacing = Number(settings.partSpacing) || 0;
-          // Single multi-sheet strategy drives both the placement algorithm
-          // (`multiStripMode`) and, for the legacy bucketed paths, the
-          // bucket fill weight. `bucketFillWeight: null` means "omit from
-          // the CLI" — handled by the spread below.
           const strategyKey = String(settings.multiSheetStrategy || 'auto').toLowerCase();
           const strategy = MULTI_SHEET_STRATEGY_OPTIONS[strategyKey]
             || MULTI_SHEET_STRATEGY_OPTIONS['auto'];
           const { multiStripMode, bucketFillWeight } = strategy;
-          const sparrowOptions = {
+          const baseSparrowOptions = {
             globalTime: Number(settings.timeLimit) || 60,
             rngSeed: Number.isFinite(Number(settings.rngSeed)) ? Math.trunc(Number(settings.rngSeed)) : 42,
             workers: Number.isFinite(Number(settings.workers)) ? Math.max(1, Math.trunc(Number(settings.workers))) : 3,
             earlyTermination: !!settings.earlyStopping,
-            maxStripLength: primarySheet.widthMode === 'unlimited' ? null : Number(primarySheet.width) || null,
             stripMargin: Number(settings.sheetMargin) || 0,
             minItemSeparation: partSpacing,
             exactCoedge: partSpacing === 0,
@@ -233,35 +373,65 @@
             multiStripMode,
             ...(Number.isFinite(bucketFillWeight) ? { bucketFillWeight } : {}),
           };
-          const result = await window.electronAPI.runSparrow(exported.payload, sparrowOptions);
 
-          if (!result?.success || !result.runId) {
-            throw new Error(result?.error || 'Failed to start Sparrow');
+          const groupedPayloads = buildNestingGroupPayloads(exported.payload);
+          if (!groupedPayloads.length) {
+            throw new Error('No nesting payload groups could be created. Check sheet material/thickness configuration.');
           }
-          activeSparrowRunId = result.runId;
-          setNestStatsTone('');
-          dom.nestStats.textContent = 'Placement running…';
-          dom.nestStats.title = result.inputPath || '';
 
-          if (nestInterval) clearInterval(nestInterval);
-          await pollSparrowRun(result.runId);
-          nestInterval = window.setInterval(async () => {
-            if (!activeSparrowRunId || sparrowRunAborted) return;
-            try {
-              await pollSparrowRun(activeSparrowRunId);
-            } catch (pollError) {
-              if (sparrowRunAborted) return;
-              console.error('[Sparrow] Live preview failed:', pollError?.sparrowDetails || pollError);
-              clearInterval(nestInterval);
-              nestInterval = null;
-              activeSparrowRunId = null;
-              showRunError(pollError.message, pollError?.sparrowDetails || pollError.message);
-              dom.startBtn.classList.remove('running');
-              dom.startBtn.disabled = false;
-              dom.stopBtn.disabled = true;
-              dom.stopBtn.classList.remove('active');
+          const combinedStrips = [];
+          for (let groupIndex = 0; groupIndex < groupedPayloads.length; groupIndex += 1) {
+            if (sparrowRunAborted) break;
+            const groupPayload = groupedPayloads[groupIndex];
+            const groupSheets = Array.isArray(groupPayload.sheets) ? groupPayload.sheets : [];
+            activeGroupSheets = groupSheets;
+            const maxStripLength = computeMaxStripLengthForSheets(groupSheets);
+            const sparrowOptions = {
+              ...baseSparrowOptions,
+              maxStripLength,
+            };
+
+            const result = await window.electronAPI.runSparrow(groupPayload, sparrowOptions);
+            if (!result?.success || !result.runId) {
+              throw new Error(result?.error || 'Failed to start Sparrow for a material/thickness group');
             }
-          }, 500);
+
+            activeSparrowRunId = result.runId;
+            setNestStatsTone('');
+            dom.nestStats.textContent = `Running group ${groupIndex + 1} of ${groupedPayloads.length}…`;
+            dom.nestStats.title = result.inputPath || '';
+
+            const finalResult = await waitForSparrowCompletion(result.runId, groupIndex + 1, groupedPayloads.length);
+            activeSparrowRunId = null;
+
+            const groupStrips = annotateStripsWithSheetMeta(finalResult.summary?.strips || [], groupSheets, result.inputPath, groupPayload.meta?.itemIdMap || null);
+            combinedStrips.push(...groupStrips);
+
+            state.nestResult = {
+              name: exported.payload.name || 'nesting-job',
+              strips: combinedStrips,
+              is_preview: false,
+            };
+            state.activeStripIndex = 0;
+            syncExportButton();
+            renderTabs();
+            showNestResult(0);
+            dom.nestStats.textContent = `Completed group ${groupIndex + 1} of ${groupedPayloads.length}`;
+          }
+
+          if (sparrowRunAborted) return;
+          if (!combinedStrips.length) {
+            throw new Error('No strips were produced by the nesting runs.');
+          }
+
+          setStatus('done');
+          setNestStatsTone('');
+          dom.nestStats.title = '';
+          dom.nestStats.textContent = 'Placement complete';
+          dom.startBtn.classList.remove('running');
+          dom.startBtn.disabled = false;
+          dom.stopBtn.disabled = true;
+          dom.stopBtn.classList.remove('active');
         } catch (err) {
           if (sparrowRunAborted) return;
           console.error('[Sparrow] Run failed:', err?.sparrowDetails || err);

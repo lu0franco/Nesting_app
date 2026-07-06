@@ -113,7 +113,11 @@ function registerExportDxfIpc() {
         const idx = String(displayIndex).padStart(2, '0');
         const width = roundUpDim(strip.sheet_width ?? strip.strip_width);
         const height = roundUpDim(strip.strip_height);
-        return `${idx}_sheet_${height}x${width}`;
+        const materialParts = [strip.sheet_material, strip.sheet_thickness]
+          .filter(Boolean)
+          .map(value => String(value).trim().replace(/[^a-zA-Z0-9]+/g, '_'));
+        const suffix = materialParts.length ? `_${materialParts.join('_')}` : '';
+        return `${idx}_sheet_${height}x${width}${suffix}`;
       }
 
       function polylineClosed(entity) {

@@ -131,14 +131,13 @@
     // from the current solver result, including corrected widths and densities.
     function populateExportModal() {
       const strips = state.nestResult?.strips || [];
-      const sheet = state.sheets[0] || {};
       const isPreview = !!state.nestResult?.is_preview;
 
       dom.exportSummarySheets.textContent = strips.length;
       const totalParts = strips.reduce((s, t) => s + (t.item_count || 0), 0);
       dom.exportSummaryParts.textContent = totalParts;
       const densities = strips
-        .map(strip => exportSheetDensityForStrip(strip, sheet))
+        .map((strip, i) => exportSheetDensityForStrip(strip, state.sheets[i] || state.sheets[state.sheets.length - 1] || {}))
         .filter(value => Number.isFinite(value) && value > 0);
       const avgUtil = densities.length
         ? densities.reduce((sum, value) => sum + value, 0) / densities.length
@@ -146,7 +145,7 @@
       dom.exportSummaryUtil.textContent = Number.isFinite(avgUtil)
         ? `${(avgUtil * 100).toFixed(1)}%`
         : '—';
-      const totalMm = strips.reduce((sum, strip) => sum + exportSheetWidthForStrip(strip, sheet), 0);
+      const totalMm = strips.reduce((sum, strip, i) => sum + exportSheetWidthForStrip(strip, state.sheets[i] || state.sheets[state.sheets.length - 1] || {}), 0);
       dom.exportSummaryLength.textContent = `${(totalMm / 1000).toFixed(2)} m`;
       dom.exportFolderLabel.classList.remove('export-folder-success', 'export-folder-error');
       if (isPreview) {
@@ -155,16 +154,18 @@
 
       dom.exportTableBody.innerHTML = '';
       strips.forEach((strip, i) => {
+        const sheet = state.sheets[i] || state.sheets[state.sheets.length - 1] || {};
         const w = roundUpDim(exportSheetWidthForStrip(strip, sheet));
         const h = roundUpDim(sheet.height || 0);
         const density = exportSheetDensityForStrip(strip, sheet);
         const pct = Number.isFinite(density) && density > 0 ? density * 100 : null;
         const cls = Number.isFinite(pct) ? utilClass(pct) : '';
+        const label = [sheet.material, sheet.thickness].filter(Boolean).join(' · ') || '—';
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><span class="export-sheet-num">${i + 1}</span></td>
           <td style="font-variant-numeric:tabular-nums">${h} × ${w}</td>
-          <td style="color:var(--text-dim)">${sheet.material || '—'}</td>
+          <td style="color:var(--text-dim)">${label}</td>
           <td style="font-variant-numeric:tabular-nums">${strip.item_count || 0}</td>
           <td>
             <div class="export-util-bar-wrap">
@@ -226,17 +227,22 @@
         dom.exportDXFBtn.textContent = 'Exporting…';
         dom.exportFolderLabel.classList.remove('export-folder-success', 'export-folder-error');
         try {
-          const sheet = state.sheets[0] || {};
-          const strips = state.nestResult.strips.map(strip => ({
-            index: strip.index,
-            json_path: strip.json_path,
-            strip_width: strip.strip_width,
-            strip_height: sheet.height || 0,
-            sheet_width: exportSheetWidthForStrip(strip, sheet),
-            sheet_width_mode: sheet.widthMode || 'fixed',
-            density: strip.density,
-            item_count: strip.item_count,
-          }));
+          const strips = state.nestResult.strips.map((strip, i) => {
+            const sheet = state.sheets[i] || state.sheets[state.sheets.length - 1] || {};
+            return {
+              index: strip.index,
+              json_path: strip.json_path,
+              strip_width: strip.strip_width,
+              strip_height: sheet.height || 0,
+              sheet_width: exportSheetWidthForStrip(strip, sheet),
+              sheet_width_mode: sheet.widthMode || 'fixed',
+              sheet_material: sheet.material || '',
+              sheet_thickness: sheet.thickness || '',
+              sheet_id: sheet.id || null,
+              density: strip.density,
+              item_count: strip.item_count,
+            };
+          });
           const result = await window.electronAPI.exportSheetsDXF({
             outputDir: exportFolderPath,
             outputDirBookmark: exportFolderBookmark || null,

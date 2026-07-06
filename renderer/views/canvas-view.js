@@ -45,17 +45,42 @@
       return DEFAULT_ENGRAVING_COLOR;
     }
 
-    // Convenience accessor — only one sheet config is supported at a time,
-    // so always pull from index 0 rather than scattering that assumption everywhere.
-    function currentSheetConfig() {
-      return state.sheets[0] || {};
+    function stripSheetConfig(strip) {
+      if (!strip) return null;
+      const config = {
+        widthMode: strip.sheet_width_mode || strip.width_mode || null,
+        width: Number.isFinite(Number(strip.sheet_width)) ? Number(strip.sheet_width) : Number(strip.width) || null,
+        height: Number.isFinite(Number(strip.sheet_height)) ? Number(strip.sheet_height) : Number(strip.height) || null,
+        material: strip.sheet_material || strip.material || '',
+        thickness: strip.sheet_thickness || strip.thickness || '',
+        id: strip.sheet_id || strip.id || null,
+      };
+      const hasDimensions = Number.isFinite(config.width) || Number.isFinite(config.height);
+      const hasMode = typeof config.widthMode === 'string' && config.widthMode !== '';
+      if (!hasMode && !hasDimensions && !config.material && !config.thickness && !config.id) {
+        return null;
+      }
+      if (!config.widthMode) config.widthMode = 'fixed';
+      if (!Number.isFinite(config.width)) config.width = null;
+      if (!Number.isFinite(config.height)) config.height = null;
+      return config;
+    }
+
+    // Convenience accessor — the current sheet index is used when available, but
+    // for grouped, combined nesting results we prefer strip metadata when present.
+    function currentSheetConfig(index = state.activeStripIndex || 0) {
+      const strip = state.nestResult?.strips?.[index];
+      const stripSheet = strip ? stripSheetConfig(strip) : null;
+      return stripSheet || state.sheets[index] || state.sheets[0] || {};
     }
 
     // When the sheet is in fixed-width mode the solver still reports its own strip width,
     // so we override the display value with the user's configured width instead.
     function displayStripWidth(strip, sheet = currentSheetConfig()) {
-      if (sheet?.widthMode === 'fixed') {
-        const configuredWidth = Number(sheet?.width);
+      const stripSheet = stripSheetConfig(strip);
+      const widthMode = stripSheet?.widthMode || sheet?.widthMode;
+      if (widthMode === 'fixed') {
+        const configuredWidth = Number(stripSheet?.width ?? sheet?.width);
         if (Number.isFinite(configuredWidth) && configuredWidth > 0) return configuredWidth;
       }
       return Number(strip?.strip_width) || 0;
@@ -71,11 +96,12 @@
       const rawWidth = Number(strip?.strip_width);
       const rawHeight = Number(strip?.strip_height) || Number(sheet?.height);
       const targetWidth = displayStripWidth(strip, sheet);
+      const widthMode = strip?.sheet_width_mode || sheet?.widthMode;
 
       if (!Number.isFinite(rawWidth) || rawWidth <= 0 || !Number.isFinite(rawHeight) || rawHeight <= 0) {
         return rawDensity;
       }
-      if (sheet?.widthMode !== 'fixed') return rawDensity;
+      if (widthMode !== 'fixed') return rawDensity;
 
       const usedArea = rawDensity * rawWidth * rawHeight;
       const fixedArea = targetWidth * rawHeight;
@@ -86,17 +112,18 @@
     // The Sparrow solver encodes sheet container frames as a strict 4-point path string.
     // This parser lets us read those coordinates back so we can rewrite the frame dimensions.
     function parseRectPathData(pathData) {
-      const match = /^M([-\d.]+),([-\d.]+) L([-\d.]+),([-\d.]+) L([-\d.]+),([-\d.]+) L([-\d.]+),([-\d.]+) z$/i.exec((pathData || '').trim());
-      if (!match) return null;
+      const trimmed = String(pathData || '').trim();
+      const numbers = trimmed.match(/-?\d+(?:\.\d+)?/g);
+      if (!numbers || numbers.length < 8) return null;
       return {
-        x0: Number(match[1]),
-        y0: Number(match[2]),
-        x1: Number(match[3]),
-        y1: Number(match[4]),
-        x2: Number(match[5]),
-        y2: Number(match[6]),
-        x3: Number(match[7]),
-        y3: Number(match[8]),
+        x0: Number(numbers[0]),
+        y0: Number(numbers[1]),
+        x1: Number(numbers[2]),
+        y1: Number(numbers[3]),
+        x2: Number(numbers[4]),
+        y2: Number(numbers[5]),
+        x3: Number(numbers[6]),
+        y3: Number(numbers[7]),
       };
     }
 
@@ -119,44 +146,60 @@
 
       const viewBoxParts = (root.getAttribute('viewBox') || '').trim().split(/\s+/).map(Number);
       const vb = {
-        x: viewBoxParts[0] || 0,
-        y: viewBoxParts[1] || 0,
-        w: viewBoxParts[2] || 0,
-        h: viewBoxParts[3] || 0,
+        x: Number.isFinite(viewBoxParts[0]) ? viewBoxParts[0] : 0,
+        y: Number.isFinite(viewBoxParts[1]) ? viewBoxParts[1] : 0,
+        w: Number.isFinite(viewBoxParts[2]) ? viewBoxParts[2] : 0,
+        h: Number.isFinite(viewBoxParts[3]) ? viewBoxParts[3] : 0,
       };
-      if (!Number.isFinite(vb.w) || vb.w <= 0) return svg;
+      if (!Number.isFinite(vb.w) || vb.w <= 0 || !Number.isFinite(vb.h) || vb.h <= 0) return svg;
 
-      const previewMinX = -SVG_PREVIEW_MARGIN_X;
+      const sheetHeight = Number.isFinite(Number(strip?.sheet_height)) ? Number(strip.sheet_height) : Number(sheet?.height);
+      const targetHeight = Number.isFinite(sheetHeight) && sheetHeight > 0 ? sheetHeight : vb.h;
+      const previewMinX = vb.x - SVG_PREVIEW_MARGIN_X;
       const previewMinY = vb.y - SVG_PREVIEW_MARGIN_Y;
       const previewWidth = targetWidth + (SVG_PREVIEW_MARGIN_X * 2);
-      const previewHeight = vb.h + (SVG_PREVIEW_MARGIN_Y * 2);
+      const previewHeight = targetHeight + (SVG_PREVIEW_MARGIN_Y * 2);
 
       root.setAttribute('viewBox', `${previewMinX} ${previewMinY} ${previewWidth} ${previewHeight}`);
       root.setAttribute('width', `${previewWidth}`);
+      root.setAttribute('height', `${previewHeight}`);
 
       const sourceWidth = Number(strip?.strip_width) || vb.w;
+      const sourceHeight = Number(strip?.strip_height) || vb.h;
       const frameOriginX = 0;
-      const frameGroups = Array.from(root.querySelectorAll('g[id^="container_"]'));
       let normalizedAnyFrame = false;
-      frameGroups.forEach(group => {
-        const framePath = group.querySelector('path');
-        if (!framePath) return;
-        const rect = parseRectPathData(framePath.getAttribute('d'));
+
+      Array.from(root.querySelectorAll('g[id^="container_"] path')).forEach(path => {
+        const rect = parseRectPathData(path.getAttribute('d'));
         if (!rect) return;
         const width = rect.x1 - rect.x0;
         const height = rect.y2 - rect.y1;
-        if (!Number.isFinite(width) || !Number.isFinite(height)) return;
-        if (Math.abs(width - sourceWidth) > 0.1) return;
-        framePath.setAttribute('d', formatRectPathData(frameOriginX, rect.y0, targetWidth, height));
+        if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return;
+
+        path.setAttribute('d', formatRectPathData(frameOriginX, rect.y0, targetWidth, targetHeight));
         normalizedAnyFrame = true;
 
-        const title = group.querySelector('title');
+        const title = path.closest('g')?.querySelector('title');
         if (title) {
           title.textContent = title.textContent.replace(
             /bbox:\s*\[x_min:\s*[-\d.]+,\s*y_min:\s*[-\d.]+,\s*x_max:\s*[-\d.]+,\s*y_max:\s*[-\d.]+\]/i,
-            `bbox: [x_min: ${frameOriginX.toFixed(3)}, y_min: ${rect.y0.toFixed(3)}, x_max: ${(frameOriginX + targetWidth).toFixed(3)}, y_max: ${(rect.y0 + height).toFixed(3)}]`
+            `bbox: [x_min: ${frameOriginX.toFixed(3)}, y_min: ${rect.y0.toFixed(3)}, x_max: ${(frameOriginX + targetWidth).toFixed(3)}, y_max: ${(rect.y0 + targetHeight).toFixed(3)}]`
           );
         }
+      });
+
+      Array.from(root.querySelectorAll('rect')).forEach(rectEl => {
+        const width = Number(rectEl.getAttribute('width'));
+        const x = Number(rectEl.getAttribute('x')) || 0;
+        const height = Number(rectEl.getAttribute('height')) || vb.h;
+        if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return;
+        const matchesSource = Math.abs(width - sourceWidth) <= 0.1;
+        const matchesTarget = Math.abs(width - targetWidth) <= 0.1;
+        if (!(matchesSource || matchesTarget) || Math.abs(x - vb.x) > 0.1 && Math.abs(x) > 0.1) return;
+        rectEl.setAttribute('x', '0');
+        rectEl.setAttribute('width', `${targetWidth}`);
+        rectEl.setAttribute('height', `${sourceHeight}`);
+        normalizedAnyFrame = true;
       });
 
       const dashedOutline = root.querySelector('#highlight_cd_shapes > path:last-of-type');
@@ -165,10 +208,23 @@
         if (rect) {
           const width = rect.x1 - rect.x0;
           const height = rect.y2 - rect.y1;
-          if (Number.isFinite(width) && Number.isFinite(height) && (Math.abs(width - sourceWidth) <= 0.1 || normalizedAnyFrame)) {
+          if (Number.isFinite(width) && Number.isFinite(height)
+            && (Math.abs(width - sourceWidth) <= 0.1 || normalizedAnyFrame || Math.abs(width - targetWidth) <= 0.1)) {
             dashedOutline.setAttribute('d', formatRectPathData(0, rect.y0, targetWidth, height));
           }
         }
+      }
+
+      if (!normalizedAnyFrame) {
+        const fallbackFrame = doc.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        fallbackFrame.setAttribute('x', '0');
+        fallbackFrame.setAttribute('y', String(vb.y));
+        fallbackFrame.setAttribute('width', String(targetWidth));
+        fallbackFrame.setAttribute('height', String(vb.h));
+        fallbackFrame.setAttribute('fill', 'none');
+        fallbackFrame.setAttribute('stroke', '#2e3550');
+        fallbackFrame.setAttribute('stroke-width', '1');
+        root.appendChild(fallbackFrame);
       }
 
       const serializer = new XMLSerializer();
@@ -194,7 +250,7 @@
     // Injects a grid background, recolours part fills to navy with a blue glow, tightens
     // the sheet border style, strips solver stat labels, and calls adjustSvgForFixedWidth
     // when the sheet is in fixed-width mode.
-    function styleStripSVG(svg, strip = null) {
+    function styleStripSVG(svg, strip = null, sheet = currentSheetConfig()) {
       if (!svg) return '';
 
       let styled = svg;
@@ -202,7 +258,6 @@
       // diagnostics, but they clutter the end-user preview and can flash
       // prominently during live updates. Remove them from the in-app SVG only.
       styled = styled.replace(/<g\b[^>]*id="collision_lines"[^>]*>[\s\S]*?<\/g>/gi, '');
-      const sheet = currentSheetConfig();
       const targetWidth = strip ? displayStripWidth(strip, sheet) : null;
       if (targetWidth) {
         styled = adjustSvgForFixedWidth(styled, strip, targetWidth);
@@ -263,7 +318,10 @@
       for (let i = initialCount; i < stripCount; i++) {
         const btn = document.createElement('button');
         btn.className = 'canvas-tab';
-        btn.textContent = `Sheet ${i + 1}`;
+        const sheetForLabel = state.nestResult?.strips?.[i] || state.sheets[i] || state.sheets[0] || {};
+        const tabLabel = [sheetForLabel.sheet_material || sheetForLabel.material, sheetForLabel.sheet_thickness || sheetForLabel.thickness]
+          .filter(Boolean).join(' · ') || `Sheet ${i + 1}`;
+        btn.textContent = `Sheet ${i + 1} · ${tabLabel}`;
         btn.addEventListener('click', () => {
           dom.canvasTabs.querySelectorAll('.canvas-tab').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
@@ -280,6 +338,10 @@
       }
 
       existing.forEach((btn, i) => {
+        const sheetForLabel = state.nestResult?.strips?.[i] || state.sheets[i] || state.sheets[0] || {};
+        const label = [sheetForLabel.sheet_material || sheetForLabel.material, sheetForLabel.sheet_thickness || sheetForLabel.thickness]
+          .filter(Boolean).join(' · ') || '';
+        btn.title = label ? `Material: ${label}` : btn.title || '';
         btn.classList.toggle('active', i === activeIndex);
       });
 
@@ -406,9 +468,9 @@
     function showNestResult(sheetIndex) {
       const strip = state.nestResult?.strips?.[sheetIndex] || null;
       if (strip?.svg) {
-        const sheet = currentSheetConfig();
+        const sheet = currentSheetConfig(sheetIndex);
         state.activeStripIndex = sheetIndex;
-        const styled = styleStripSVG(strip.svg, strip);
+        const styled = styleStripSVG(strip.svg, strip, sheet);
         const previousIndex = dom.svgContainer.dataset.activeIndex;
         const sameStrip = previousIndex === String(sheetIndex);
         const sameSvg = sameStrip && dom.svgContainer.dataset.svgLen === String(styled.length)
