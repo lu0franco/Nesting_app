@@ -75,11 +75,17 @@
         ...shape,
         qty: file.qty || shape.qty || 1,
       }));
-      // Extraer material y espesor desde el nombre del archivo
-      const { parseMaterialAndThickness } = globalScope.NestHelpers;
-      const { material, thickness } = parseMaterialAndThickness(file.name);
-      file.material = material || '';
-      file.thickness = thickness || '';
+      // Extraer propiedades desde el contenido crudo del DXF
+      const { parseDxfPropertiesFromRaw } = globalScope.NestHelpers;
+      const dxfProps = parseDxfPropertiesFromRaw(result.raw);
+      file.material = dxfProps.material || '';
+      file.thickness = dxfProps.thickness || '';
+      file.partNumber = dxfProps.partNumber || '';
+      file.stockNumber = dxfProps.stockNumber || '';
+      // Usar la cantidad del DXF si está disponible, sino la del archivo
+      if (dxfProps.quantity > 1) {
+        file.qty = dxfProps.quantity;
+      }
       file.layers = synthesizeEngravingLayer(parsed.layers || [], settings, file.id);
       file._multiSketchDetection = !!settings.multiSketchDetection;
       file._sketchContourMethod = sketchContourMethod;

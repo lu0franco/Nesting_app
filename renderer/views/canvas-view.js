@@ -76,13 +76,12 @@
 
     // When the sheet is in fixed-width mode the solver still reports its own strip width,
     // so we override the display value with the user's configured width instead.
+    // NOTE: Always use the configured sheet width to ensure container frame matches sheet dimensions
     function displayStripWidth(strip, sheet = currentSheetConfig()) {
       const stripSheet = stripSheetConfig(strip);
-      const widthMode = stripSheet?.widthMode || sheet?.widthMode;
-      if (widthMode === 'fixed') {
-        const configuredWidth = Number(stripSheet?.width ?? sheet?.width);
-        if (Number.isFinite(configuredWidth) && configuredWidth > 0) return configuredWidth;
-      }
+      const configuredWidth = Number(stripSheet?.width ?? sheet?.width);
+      console.log('[displayStripWidth] stripSheet?.width:', stripSheet?.width, 'sheet?.width:', sheet?.width, 'configuredWidth:', configuredWidth);
+      if (Number.isFinite(configuredWidth) && configuredWidth > 0) return configuredWidth;
       return Number(strip?.strip_width) || 0;
     }
 
@@ -135,107 +134,57 @@
 
     // In fixed-width mode the solver's viewBox and frame rectangles are sized to the solver's
     // strip width, not the user's target. This rewrites those elements in-place and re-serialises
-    // the SVG so that what gets rendered matches the configured sheet width/height.
-    function adjustSvgForFixedWidth(svg, strip, targetWidth, sheet = currentSheetConfig()) {
-      if (!svg || !Number.isFinite(targetWidth) || targetWidth <= 0) return svg;
+    // the SVG so that what gets rendered matches the configured sheet width.
+    // NOTE: We force both the viewBox and container frame to match the configured sheet dimensions.
+    // Using regex instead of DOMParser to avoid parsing issues.
+    function adjustSvgForFixedWidth(svg, strip, targetWidth) {
+      console.log('[adjustSvgForFixedWidth] START - targetWidth:', targetWidth, 'strip?.strip_width:', strip?.strip_width);
+      if (!svg || !Number.isFinite(targetWidth) || targetWidth <= 0) {
+        console.log('[adjustSvgForFixedWidth] EARLY RETURN - svg:', !!svg, 'targetWidth valid:', Number.isFinite(targetWidth) && targetWidth > 0);
+        return svg;
+      }
 
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(svg, 'image/svg+xml');
-      const root = doc.documentElement;
-      if (!root || root.nodeName.toLowerCase() !== 'svg') return svg;
+      let styled = svg;
 
-      const viewBoxParts = (root.getAttribute('viewBox') || '').trim().split(/\s+/).map(Number);
-      const vb = {
-        x: Number.isFinite(viewBoxParts[0]) ? viewBoxParts[0] : 0,
-        y: Number.isFinite(viewBoxParts[1]) ? viewBoxParts[1] : 0,
-        w: Number.isFinite(viewBoxParts[2]) ? viewBoxParts[2] : 0,
-        h: Number.isFinite(viewBoxParts[3]) ? viewBoxParts[3] : 0,
-      };
-      if (!Number.isFinite(vb.w) || vb.w <= 0 || !Number.isFinite(vb.h) || vb.h <= 0) return svg;
+      // Adjust viewBox to match configured sheet width
+      const viewBoxMatch = styled.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/i);
+      if (viewBoxMatch) {
+        const vb = {
+          x: Number(viewBoxMatch[1]),
+          y: Number(viewBoxMatch[2]),
+          w: Number(viewBoxMatch[3]),
+          h: Number(viewBoxMatch[4]),
+        };
+        console.log('[adjustSvgForFixedWidth] original viewBox:', vb);
+        const newViewBox = `${vb.x} ${vb.y} ${targetWidth} ${vb.h}`;
+        console.log('[adjustSvgForFixedWidth] new viewBox:', newViewBox);
+        styled = styled.replace(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/i, `viewBox="${newViewBox}"`);
+      }
 
-      const configuredHeight = Number.isFinite(Number(strip?.sheet_height))
-        ? Number(strip.sheet_height)
-        : Number(sheet?.height);
-      const targetHeight = Number.isFinite(configuredHeight) && configuredHeight > 0 ? configuredHeight : vb.h;
-      const previewMinX = vb.x - SVG_PREVIEW_MARGIN_X;
-      const previewMinY = vb.y - SVG_PREVIEW_MARGIN_Y;
-      const previewWidth = targetWidth + (SVG_PREVIEW_MARGIN_X * 2);
-      const previewHeight = targetHeight + (SVG_PREVIEW_MARGIN_Y * 2);
-
-      root.setAttribute('viewBox', `${previewMinX} ${previewMinY} ${previewWidth} ${previewHeight}`);
-      root.setAttribute('width', `${previewWidth}`);
-      root.setAttribute('height', `${previewHeight}`);
-
-      const sourceWidth = Number(strip?.strip_width) || vb.w;
-      const frameOriginX = 0;
-      let normalizedAnyFrame = false;
-
-      Array.from(root.querySelectorAll('g[id^="container_"] path')).forEach(path => {
-        const rect = parseRectPathData(path.getAttribute('d'));
-        if (!rect) return;
-        const width = rect.x1 - rect.x0;
-        const height = rect.y2 - rect.y1;
-        if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return;
-
-        path.setAttribute('d', formatRectPathData(frameOriginX, rect.y0, targetWidth, targetHeight));
-        normalizedAnyFrame = true;
-
-        const title = path.closest('g')?.querySelector('title');
-        if (title) {
-          title.textContent = title.textContent.replace(
-            /bbox:\s*\[x_min:\s*[-\d.]+,\s*y_min:\s*[-\d.]+,\s*x_max:\s*[-\d.]+,\s*y_max:\s*[-\d.]+\]/i,
-            `bbox: [x_min: ${frameOriginX.toFixed(3)}, y_min: ${rect.y0.toFixed(3)}, x_max: ${(frameOriginX + targetWidth).toFixed(3)}, y_max: ${(rect.y0 + targetHeight).toFixed(3)}]`
-          );
-        }
-      });
-
-      Array.from(root.querySelectorAll('rect')).forEach(rectEl => {
-        const width = Number(rectEl.getAttribute('width'));
-        const x = Number(rectEl.getAttribute('x')) || 0;
-        const height = Number(rectEl.getAttribute('height')) || vb.h;
-        if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return;
-        const matchesSource = Math.abs(width - sourceWidth) <= 0.1;
-        const matchesTarget = Math.abs(width - targetWidth) <= 0.1;
-        if (!(matchesSource || matchesTarget) || Math.abs(x - vb.x) > 0.1 && Math.abs(x) > 0.1) return;
-        rectEl.setAttribute('x', '0');
-        rectEl.setAttribute('width', `${targetWidth}`);
-        rectEl.setAttribute('height', `${targetHeight}`);
-        normalizedAnyFrame = true;
-      });
-
-      const dashedOutline = root.querySelector('#highlight_cd_shapes > path:last-of-type');
-      if (dashedOutline) {
-        const rect = parseRectPathData(dashedOutline.getAttribute('d'));
+      // Adjust container frame path data (g[id^="container_"] path)
+      styled = styled.replace(/(<g[^>]*id="container_[^"]*"[^>]*>\s*<path[^>]*d=")([^"]*)("[^>]*>)/gi, (match, prefix, pathData, suffix) => {
+        const rect = parseRectPathData(pathData);
         if (rect) {
-          const width = rect.x1 - rect.x0;
-          const height = rect.y2 - rect.y1;
-          if (Number.isFinite(width) && Number.isFinite(height)
-            && (Math.abs(width - sourceWidth) <= 0.1 || normalizedAnyFrame || Math.abs(width - targetWidth) <= 0.1)) {
-            dashedOutline.setAttribute('d', formatRectPathData(0, rect.y0, targetWidth, targetHeight));
-          }
+          const newPathData = formatRectPathData(0, rect.y0, targetWidth, rect.y2 - rect.y1);
+          console.log('[adjustSvgForFixedWidth] adjusted container path from', pathData, 'to', newPathData);
+          return prefix + newPathData + suffix;
         }
-      }
+        return match;
+      });
 
-      if (!normalizedAnyFrame) {
-        const fallbackFrame = doc.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        fallbackFrame.setAttribute('x', '0');
-        fallbackFrame.setAttribute('y', String(vb.y));
-        fallbackFrame.setAttribute('width', String(targetWidth));
-        fallbackFrame.setAttribute('height', String(targetHeight));
-        fallbackFrame.setAttribute('fill', 'none');
-        fallbackFrame.setAttribute('stroke', '#2e3550');
-        fallbackFrame.setAttribute('stroke-width', '1');
-        root.appendChild(fallbackFrame);
-      }
+      // Adjust container bbox in title elements
+      styled = styled.replace(
+        /bbox:\s*\[x_min:\s*[-\d.]+,\s*y_min:\s*[-\d.]+,\s*x_max:\s*[-\d.]+,\s*y_max:\s*[-\d.]+\]/gi,
+        `bbox: [x_min: 0.000, y_min: 0.000, x_max: ${targetWidth.toFixed(3)}, y_max: 1250.000]`
+      );
 
-      const serializer = new XMLSerializer();
-      return serializer.serializeToString(root);
+      console.log('[adjustSvgForFixedWidth] DONE');
+      return styled;
     }
 
     // Cheap stable signature for an SVG string used to detect "same content"
     // across polls. djb2 over ~32 byte-strided samples — enough collision
     // resistance for our usage (same-poll equality check, not security) and
-    // O(1) regardless of SVG length.
     function quickSvgHash(text) {
       if (!text) return '0';
       const len = text.length;
@@ -259,9 +208,10 @@
       // diagnostics, but they clutter the end-user preview and can flash
       // prominently during live updates. Remove them from the in-app SVG only.
       styled = styled.replace(/<g\b[^>]*id="collision_lines"[^>]*>[\s\S]*?<\/g>/gi, '');
+
       const targetWidth = strip ? displayStripWidth(strip, sheet) : null;
       if (targetWidth) {
-        styled = adjustSvgForFixedWidth(styled, strip, targetWidth, sheet);
+        styled = adjustSvgForFixedWidth(styled, strip, targetWidth);
       }
       const viewBoxMatch = styled.match(/viewBox="([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)"/i);
       const vb = viewBoxMatch

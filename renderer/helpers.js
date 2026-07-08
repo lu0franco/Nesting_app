@@ -100,6 +100,95 @@
     return { material: String(material), thickness: String(thickness) };
   }
 
+  /**
+   * Extrae propiedades desde el contenido crudo del DXF.
+   * Formato esperado en sección SUMMARYINFO:
+   *   1000
+   *   PartNumber
+   *   1000
+   *   TAPA DE CIERRE
+   *   1000
+   *   StockNumber
+   *   1000
+   *   D-638.J.11.03
+   *   1000
+   *   MATERIAL_PLANO
+   *   1000
+   *   CHAPA 1,2 mm AISI 304 2B
+   *   1000
+   *   CANTIDAD_USADA
+   *   1000
+   *   1
+   */
+  function parseDxfPropertiesFromRaw(rawContent) {
+    if (!rawContent || typeof rawContent !== 'string') {
+      return { partNumber: '', stockNumber: '', material: '', thickness: '', quantity: 1 };
+    }
+
+    const lines = rawContent.split('\n');
+    const properties = {
+      partNumber: '',
+      stockNumber: '',
+      material: '',
+      thickness: '',
+      quantity: 1
+    };
+
+    let i = 0;
+    
+    while (i < lines.length) {
+      const line = lines[i].trim();
+      
+      // Buscar el patrón: 1000 -> valor -> 1000 -> valor
+      // El formato puede ser:
+      // 1000 -> PartNumber -> 1000 -> TAPA DE CIERRE
+      // 1000 -> D-638.J.11.01 -> 1000 -> MATERIAL_PLANO -> 1000 -> CHAPA 1,2 mm AISI 304 2B
+      if (line === '1000' && i + 3 < lines.length) {
+        const firstValue = lines[i + 1].trim();
+        const nextMarker = lines[i + 2].trim();
+        const secondValue = lines[i + 3].trim();
+        
+        if (nextMarker === '1000') {
+          // Caso 1: firstValue es el nombre del campo, secondValue es el valor
+          if (firstValue === 'PartNumber') {
+            properties.partNumber = secondValue;
+            i += 4;
+          } else if (firstValue === 'StockNumber') {
+            properties.stockNumber = secondValue;
+            i += 4;
+          } else if (firstValue === 'CANTIDAD_USADA') {
+            const qty = parseInt(secondValue, 10);
+            properties.quantity = Number.isFinite(qty) && qty > 0 ? qty : 1;
+            i += 4;
+          } 
+          // Caso 2: secondValue es MATERIAL_PLANO, entonces el siguiente valor es el material
+          else if (secondValue === 'MATERIAL_PLANO' && i + 5 < lines.length) {
+            const nextMarker2 = lines[i + 4].trim();
+            const materialValue = lines[i + 5].trim();
+            if (nextMarker2 === '1000') {
+              properties.material = materialValue;
+              // Extraer espesor del material si está disponible
+              const thicknessMatch = materialValue.match(/(\d+[.,]?\d*)\s*mm/i);
+              if (thicknessMatch) {
+                properties.thickness = thicknessMatch[1].replace(',', '.') + 'mm';
+              }
+              i += 6; // Skip firstValue, nextMarker, secondValue, nextMarker2, materialValue, and next 1000
+            } else {
+              i += 4;
+            }
+          } else {
+            i += 4;
+          }
+        } else {
+          i++;
+        }
+      }
+      i++;
+    }
+
+    return properties;
+  }
+
   function normalizeMaterialOrThickness(value) {
     return String(value || '').trim().toLowerCase();
   }
@@ -138,6 +227,7 @@
     effectiveFileQty,
     buildJobName,
     parseMaterialAndThickness,
+    parseDxfPropertiesFromRaw,
     normalizeMaterialOrThickness,
     normalizeGroupKey,
     groupByMaterialThickness,

@@ -200,7 +200,8 @@ const settingsModalApi = window.NestSettingsModal.createSettingsModal({
   dom,
   onSettingsApplied: () => {
     if (typeof window.refreshDXFPreview === 'function') window.refreshDXFPreview();
-    if (state.nestResult && state.sheets.length) canvasViewApi.showNestResult(0);
+    // Don't re-render nesting result when spacing parameters change - they only affect new nesting runs
+    // if (state.nestResult && state.sheets.length) canvasViewApi.showNestResult(0);
   },
 });
 
@@ -307,6 +308,8 @@ const nestingServiceApi = window.NestNestingService.createNestingService({
   showNestResult: canvasViewApi.showNestResult,
   renderTabs: canvasViewApi.renderTabs,
   syncExportButton: exportServiceApi.syncExportButton,
+  getOpenSheetEditor: () => sheetModalApi.openSheetEditor,
+  updateSheetModeControls: () => sheetModalApi.updateSheetModeControls,
 });
 
 // Files pane — the list of loaded DXF files in the left sidebar with per-shape

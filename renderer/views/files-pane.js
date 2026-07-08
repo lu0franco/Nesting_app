@@ -2,7 +2,7 @@
 
 (function defineFilesPane(globalScope) {
   function createFilesPane({ state, dom, schedulePersistJobState, hydrateFileShapesForList }) {
-    const { uid, formatBytes, effectiveFileQty, parseMaterialAndThickness } = globalScope.NestHelpers;
+    const { uid, formatBytes, effectiveFileQty } = globalScope.NestHelpers;
 
     // Rebuilds the DXF files sidebar so it matches current state.
     // Shows each file's shape count, size, and total qty, wires up the ✕ remove buttons,
@@ -20,9 +20,10 @@
         li.innerHTML = `
           <div class="file-icon">DXF</div>
           <div class="file-info">
-            <div class="file-name" title="${f.name}">${f.name}</div>
+            <div class="file-name" title="${f.partNumber || f.name}">${f.partNumber || f.name}</div>
             <div class="file-size">${shapeLabel} · ${formatBytes(f.size)}</div>
-            ${(f.material || f.thickness) ? '<div class="file-material">' + [f.material, f.thickness].filter(Boolean).join(' · ') + '</div>' : ''}
+            ${(f.material || f.thickness) ? '<div class="file-material">📋 ' + [f.material, f.thickness].filter(Boolean).join(' · ') + '</div>' : ''}
+            ${(f.stockNumber) ? '<div class="file-stock">' + f.stockNumber + '</div>' : ''}
           </div>
           <div class="file-qty-total">${effectiveFileQty(f)}</div>
           <button class="file-remove" data-id="${f.id}" title="Remove">
@@ -57,7 +58,6 @@
       const newlyAdded = [];
       fileObjs.forEach(f => {
         if (!state.files.find(x => x.name === f.name)) {
-          const { material, thickness } = parseMaterialAndThickness(f.name);
           const file = {
             id: uid(),
             name: f.name,
@@ -65,8 +65,10 @@
             path: f.path || null,
             bookmark: f.bookmark || null,
             qty: 1,
-            material,
-            thickness,
+            material: '',
+            thickness: '',
+            partNumber: '',
+            stockNumber: '',
           };
           state.files.push(file);
           newlyAdded.push(file);
