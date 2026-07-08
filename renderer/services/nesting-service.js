@@ -57,7 +57,7 @@
     function showStartRequirementsWarning(message) {
       setStatus('idle');
       setNestStatsTone('warning');
-      dom.nestStats.innerHTML = message;
+      dom.nestStats.textContent = message;
       dom.nestStats.title = '';
     }
 
@@ -337,50 +337,47 @@
             const groupNames = groups.map(g => `${g.material || 'No material'} ${g.thickness ? '(' + g.thickness + ')' : ''}`).join(', ');
             
             // Create a more detailed warning with option to create sheets
-            const warningHtml = `
-              <div class="material-mismatch-warning">
-                <p><strong>Material mismatch:</strong> The following materials don't match any sheet:</p>
-                <ul>
-                  ${groups.map(g => `
-                    <li>
-                      <strong>${g.material || 'No material'}</strong> ${g.thickness ? '(' + g.thickness + ')' : ''}
-                      <button class="create-sheet-btn" data-material="${g.material || ''}" data-thickness="${g.thickness || ''}">
-                        Create sheet
-                      </button>
-                    </li>
-                  `).join('')}
-                </ul>
-              </div>
+            const warningEl = document.createElement('div');
+            warningEl.className = 'material-mismatch-warning';
+            warningEl.innerHTML = `
+              <p><strong>Material mismatch:</strong> The following materials don't match any sheet:</p>
+              <ul>
+                ${groups.map(g => `
+                  <li>
+                    <strong>${g.material || 'No material'}</strong> ${g.thickness ? '(' + g.thickness + ')' : ''}
+                    <button class="create-sheet-btn" data-material="${g.material || ''}" data-thickness="${g.thickness || ''}">
+                      Create sheet
+                    </button>
+                  </li>
+                `).join('')}
+              </ul>
             `;
             
-            showStartRequirementsWarning(warningHtml);
-            
-            // Add click handlers for create sheet buttons after the warning is rendered
-            setTimeout(() => {
-              dom.nestStats.querySelectorAll('.create-sheet-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                  const material = btn.dataset.material;
-                  const thickness = btn.dataset.thickness;
-                  
-                  // Open sheet modal with pre-filled values
-                  const openSheetEditor = getOpenSheetEditor ? getOpenSheetEditor() : null;
-                  if (openSheetEditor) {
-                    // Reset form first
-                    state.editingSheetId = null;
-                    dom.sheetWidthMode.value = 'fixed';
-                    if (typeof dom.sheetWidthMode._syncCustomSelect === 'function') dom.sheetWidthMode._syncCustomSelect();
-                    dom.sheetHeight.value = '1250';
-                    dom.sheetWidth.value = '3000';
-                    dom.sheetMaterial.value = material;
-                    if (dom.sheetThickness) dom.sheetThickness.value = thickness;
-                    dom.confirmSheet.textContent = 'Add Sheet';
-                    if (updateSheetModeControls) updateSheetModeControls();
-                    dom.sheetModal.classList.add('open');
-                  }
-                });
+            // Add click handlers for create sheet buttons
+            warningEl.querySelectorAll('.create-sheet-btn').forEach(btn => {
+              btn.addEventListener('click', () => {
+                const material = btn.dataset.material;
+                const thickness = btn.dataset.thickness;
+                
+                // Open sheet modal with pre-filled values
+                const openSheetEditor = getOpenSheetEditor ? getOpenSheetEditor() : null;
+                if (openSheetEditor) {
+                  // Reset form first
+                  state.editingSheetId = null;
+                  dom.sheetWidthMode.value = 'fixed';
+                  if (typeof dom.sheetWidthMode._syncCustomSelect === 'function') dom.sheetWidthMode._syncCustomSelect();
+                  dom.sheetHeight.value = '1250';
+                  dom.sheetWidth.value = '3000';
+                  dom.sheetMaterial.value = material;
+                  if (dom.sheetThickness) dom.sheetThickness.value = thickness;
+                  dom.confirmSheet.textContent = 'Add Sheet';
+                  if (updateSheetModeControls) updateSheetModeControls();
+                  dom.sheetModal.classList.add('open');
+                }
               });
-            }, 0);
+            });
             
+            showStartRequirementsWarning(warningEl);
             return;
           }
         }
