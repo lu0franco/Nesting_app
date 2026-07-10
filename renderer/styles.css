@@ -664,6 +664,30 @@ body.platform-linux .linux-menubar {
 .sheet-item:hover { background: var(--surface2); }
 .sheet-item:hover .file-remove { opacity: 1; }
 
+.sheet-remove {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .12s, color .12s, opacity .12s;
+}
+
+.sheet-remove:hover {
+  background: rgba(247, 95, 95, .15);
+  color: var(--danger);
+}
+
 .sheet-icon {
   width: 28px;
   height: 28px;
@@ -1197,6 +1221,30 @@ body.platform-linux .linux-menubar {
   gap: 8px;
   padding: 14px 20px;
   border-top: 1px solid var(--border);
+}
+
+.material-mismatch-message {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.material-mismatch-message p {
+  margin: 0 0 10px;
+}
+
+.material-mismatch-message p:last-child {
+  margin-bottom: 0;
+}
+
+.material-mismatch-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+}
+
+.material-mismatch-list li + li {
+  margin-top: 4px;
 }
 
 .btn-primary, .btn-secondary {

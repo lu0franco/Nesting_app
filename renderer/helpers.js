@@ -101,6 +101,62 @@
   }
 
   /**
+   * Normaliza un valor MATERIAL_PLANO de DXF en material de chapa y espesor.
+   * Ejemplo: "CHAPA 1,2 mm AISI 430 2B" -> { material: "AISI 430 2B", thickness: "1,2mm" }
+   */
+  function parseMaterialPlanoValue(rawValue) {
+    let value = String(rawValue || '').trim();
+    if (!value) return { material: '', thickness: '' };
+
+    value = value.replace(/^chapa\b\s*/i, '').trim();
+
+    let thickness = '';
+    const leadingThickness = value.match(/^(\d+[.,]?\d*)\s*mm\b\s*/i);
+    if (leadingThickness) {
+      thickness = `${leadingThickness[1]}mm`;
+      value = value.slice(leadingThickness[0].length).trim();
+    } else {
+      const embeddedThickness = value.match(/(\d+[.,]?\d*)\s*mm\b/i);
+      if (embeddedThickness) {
+        thickness = `${embeddedThickness[1]}mm`;
+        value = value.replace(embeddedThickness[0], ' ').replace(/\s+/g, ' ').trim();
+      }
+    }
+
+    return {
+      material: value.trim(),
+      thickness,
+    };
+  }
+
+  /**
+   * Devuelve material/espesor listos para una chapa, re-parseando valores legacy si hace falta.
+   */
+  function normalizePartMaterialFields(material, thickness) {
+    const rawMaterial = String(material || '').trim();
+    const rawThickness = String(thickness || '').trim();
+    const looksLikeMaterialPlano = /^chapa\b/i.test(rawMaterial)
+      || /\d+[.,]?\d*\s*mm/i.test(rawMaterial);
+
+    if (!looksLikeMaterialPlano) {
+      return { material: rawMaterial, thickness: rawThickness };
+    }
+
+    const parsed = parseMaterialPlanoValue(rawMaterial);
+    return {
+      material: parsed.material || rawMaterial,
+      thickness: rawThickness || parsed.thickness,
+    };
+  }
+
+  /** Etiqueta combinada para mostrar en la lista de piezas: "AISI 430 2B 1,2mm". */
+  function formatPartMaterialLabel(material, thickness) {
+    const { material: mat, thickness: thick } = normalizePartMaterialFields(material, thickness);
+    if (mat && thick) return `${mat} ${thick}`;
+    return mat || thick || '';
+  }
+
+  /**
    * Extrae propiedades desde el contenido crudo del DXF.
    * Formato esperado en sección SUMMARYINFO:
    *   1000
@@ -166,12 +222,9 @@
             const nextMarker2 = lines[i + 4].trim();
             const materialValue = lines[i + 5].trim();
             if (nextMarker2 === '1000') {
-              properties.material = materialValue;
-              // Extraer espesor del material si está disponible
-              const thicknessMatch = materialValue.match(/(\d+[.,]?\d*)\s*mm/i);
-              if (thicknessMatch) {
-                properties.thickness = thicknessMatch[1].replace(',', '.') + 'mm';
-              }
+              const parsedMaterial = parseMaterialPlanoValue(materialValue);
+              properties.material = parsedMaterial.material;
+              properties.thickness = parsedMaterial.thickness;
               i += 6; // Skip firstValue, nextMarker, secondValue, nextMarker2, materialValue, and next 1000
             } else {
               i += 4;
@@ -227,6 +280,9 @@
     effectiveFileQty,
     buildJobName,
     parseMaterialAndThickness,
+    parseMaterialPlanoValue,
+    normalizePartMaterialFields,
+    formatPartMaterialLabel,
     parseDxfPropertiesFromRaw,
     normalizeMaterialOrThickness,
     normalizeGroupKey,

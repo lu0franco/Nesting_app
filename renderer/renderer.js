@@ -47,6 +47,11 @@ const dom = {
   applySettings: document.getElementById('applySettings'),
   resetSettings: document.getElementById('resetSettings'),
   settingsFields: Array.from(document.getElementById('settingsModal').querySelectorAll('[data-setting-key]')),
+  materialMismatchModal: document.getElementById('materialMismatchModal'),
+  materialMismatchMessage: document.getElementById('materialMismatchMessage'),
+  confirmMaterialMismatch: document.getElementById('confirmMaterialMismatch'),
+  cancelMaterialMismatch: document.getElementById('cancelMaterialMismatch'),
+  closeMaterialMismatch: document.getElementById('closeMaterialMismatch'),
   sheetModal: document.getElementById('sheetModal'),
   addSheetBtnDialog: document.getElementById('addSheetBtn'),
   confirmSheet: document.getElementById('confirmSheet'),
@@ -308,8 +313,7 @@ const nestingServiceApi = window.NestNestingService.createNestingService({
   showNestResult: canvasViewApi.showNestResult,
   renderTabs: canvasViewApi.renderTabs,
   syncExportButton: exportServiceApi.syncExportButton,
-  getOpenSheetEditor: () => sheetModalApi.openSheetEditor,
-  updateSheetModeControls: () => sheetModalApi.updateSheetModeControls,
+  openSheetEditorForMaterial: (...args) => sheetModalApi.openSheetEditorForMaterial(...args),
 });
 
 // Files pane — the list of loaded DXF files in the left sidebar with per-shape
@@ -533,7 +537,8 @@ function bindDragAndDrop() {
 // The sheet modal has its own close logic, so we delegate to that API
 // instead of just removing the class directly.
 function bindOverlayClose() {
-  [dom.settingsModal, dom.sheetModal].forEach(modal => {
+  [dom.settingsModal, dom.materialMismatchModal, dom.sheetModal].forEach(modal => {
+    if (!modal) return;
     modal.addEventListener('click', e => {
       if (e.target !== modal) return;
       if (modal === dom.sheetModal) {

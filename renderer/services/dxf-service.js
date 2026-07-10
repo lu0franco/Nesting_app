@@ -76,10 +76,11 @@
         qty: file.qty || shape.qty || 1,
       }));
       // Extraer propiedades desde el contenido crudo del DXF
-      const { parseDxfPropertiesFromRaw } = globalScope.NestHelpers;
+      const { parseDxfPropertiesFromRaw, normalizePartMaterialFields } = globalScope.NestHelpers;
       const dxfProps = parseDxfPropertiesFromRaw(result.raw);
-      file.material = dxfProps.material || '';
-      file.thickness = dxfProps.thickness || '';
+      const resolvedMaterial = normalizePartMaterialFields(dxfProps.material, dxfProps.thickness);
+      file.material = resolvedMaterial.material || '';
+      file.thickness = resolvedMaterial.thickness || '';
       file.partNumber = dxfProps.partNumber || '';
       file.stockNumber = dxfProps.stockNumber || '';
       // Usar la cantidad del DXF si está disponible, sino la del archivo

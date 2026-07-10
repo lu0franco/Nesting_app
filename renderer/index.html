@@ -259,6 +259,29 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
+     MATERIAL MISMATCH DIALOG
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="materialMismatchModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <span class="modal-title">Chapa no encontrada</span>
+      <button class="modal-close" id="closeMaterialMismatch" type="button" aria-label="Cerrar">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="materialMismatchMessage" class="material-mismatch-message"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancelMaterialMismatch" type="button">Cancelar</button>
+      <button class="btn-primary" id="confirmMaterialMismatch" type="button">Crear chapa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
      ADD SHEET DIALOG
 ═══════════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="sheetModal">

@@ -3,8 +3,7 @@
 (function defineSheetsPane(globalScope) {
   function createSheetsPane({ state, dom, schedulePersistJobState, getOpenSheetEditor, renderTabs }) {
     // Rebuilds the sheets sidebar so it reflects current state.
-    // Hides the Add Sheet button once a sheet exists (only one is supported), renders each sheet row
-    // with its dimensions, material, and mode label, and calls renderTabs to keep the canvas tab row in sync.
+    // Renders each sheet row with dimensions, material, mode label, and a per-row delete button.
     function renderSheets() {
       dom.sheetList.innerHTML = '';
       if (dom.addSheetBtn) {
@@ -33,22 +32,22 @@
             <div class="sheet-dims">${widthLabel}</div>
             <div class="sheet-material">${matLabel} · ${modeLabel}</div>
           </div>
-          <button class="file-remove" data-id="${s.id}" title="Remove">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <path d="M9 1L1 9M1 1l8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <button class="sheet-remove" data-id="${s.id}" type="button" title="Eliminar chapa" aria-label="Eliminar chapa">
+            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M2.5 3.5h9M5.5 3.5V2.4c0-.5.4-.9.9-.9h1.2c.5 0 .9.4.9.9v1.1M4 5.2v5.1c0 .7.6 1.2 1.2 1.2h3.6c.7 0 1.2-.5 1.2-1.2V5.2M5.8 5.8v4M8.2 5.8v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </button>`;
         li.addEventListener('click', e => {
-          if (e.target.closest('.file-remove')) return;
+          if (e.target.closest('.sheet-remove')) return;
           const openSheetEditor = getOpenSheetEditor();
           if (openSheetEditor) openSheetEditor(s.id);
         });
         dom.sheetList.appendChild(li);
       });
-      dom.sheetList.querySelectorAll('.file-remove').forEach(btn => {
+      dom.sheetList.querySelectorAll('.sheet-remove').forEach(btn => {
         btn.addEventListener('click', e => {
           e.stopPropagation();
-          state.sheets = state.sheets.filter(x => x.id !== btn.dataset.id);
+          state.sheets = state.sheets.filter(sheet => sheet.id !== btn.dataset.id);
           renderSheets();
           renderTabs();
           schedulePersistJobState();

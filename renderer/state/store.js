@@ -85,16 +85,19 @@
       }
       if (!result.state) return false;
 
-      const { effectiveFileQty } = globalScope.NestHelpers;
+      const { effectiveFileQty, normalizePartMaterialFields } = globalScope.NestHelpers;
       state.files = Array.isArray(result.state.files)
-        ? result.state.files.map(file => ({
-            ...file,
-            qty: effectiveFileQty(file),
-            material: (file.material || '').trim(),
-            thickness: (file.thickness || '').trim(),
-            _multiSketchDetection: typeof file?._multiSketchDetection === 'boolean' ? file._multiSketchDetection : null,
-            _sketchContourMethod: file?._sketchContourMethod || null,
-          }))
+        ? result.state.files.map(file => {
+            const resolved = normalizePartMaterialFields(file.material, file.thickness);
+            return {
+              ...file,
+              qty: effectiveFileQty(file),
+              material: resolved.material,
+              thickness: resolved.thickness,
+              _multiSketchDetection: typeof file?._multiSketchDetection === 'boolean' ? file._multiSketchDetection : null,
+              _sketchContourMethod: file?._sketchContourMethod || null,
+            };
+          })
         : [];
       state.sheets = Array.isArray(result.state.sheets) ? result.state.sheets : [];
       return state.files.length > 0 || state.sheets.length > 0;

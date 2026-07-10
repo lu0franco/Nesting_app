@@ -34,6 +34,16 @@
       updateSheetModeControls();
     }
 
+    // Opens the sheet modal with material and thickness pre-filled from a part mismatch.
+    function openSheetEditorForMaterial(material = '', thickness = '') {
+      const { normalizePartMaterialFields } = globalScope.NestHelpers;
+      const resolved = normalizePartMaterialFields(material, thickness);
+      resetSheetForm();
+      dom.sheetMaterial.value = resolved.material;
+      if (dom.sheetThickness) dom.sheetThickness.value = resolved.thickness;
+      dom.sheetModal.classList.add('open');
+    }
+
     // Opens the sheet modal in add mode (blank form) or edit mode (pre-filled from an existing sheet).
     function openSheetEditor(sheetId = null) {
       if (!sheetId) {
@@ -128,6 +138,7 @@
 
     return {
       openSheetEditor,
+      openSheetEditorForMaterial,
       closeSheetDialog,
       updateSheetModeControls,
       bind,
