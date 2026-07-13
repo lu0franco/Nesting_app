@@ -57,7 +57,12 @@
     function showStartRequirementsWarning(message) {
       setStatus('idle');
       setNestStatsTone('warning');
-      dom.nestStats.textContent = message;
+      if (typeof message === 'string') {
+        dom.nestStats.textContent = message;
+      } else {
+        dom.nestStats.innerHTML = '';
+        dom.nestStats.appendChild(message);
+      }
       dom.nestStats.title = '';
     }
 
@@ -359,9 +364,8 @@
                 const material = btn.dataset.material;
                 const thickness = btn.dataset.thickness;
                 
-                // Open sheet modal with pre-filled values
-                const openSheetEditor = getOpenSheetEditor ? getOpenSheetEditor() : null;
-                if (openSheetEditor) {
+                // Open sheet modal with pre-filled values directly via DOM
+                if (dom.sheetModal && dom.sheetMaterial) {
                   // Reset form first
                   state.editingSheetId = null;
                   dom.sheetWidthMode.value = 'fixed';
@@ -383,7 +387,26 @@
         }
 
         if (!hasSheets) {
-          showStartRequirementsWarning('Add at least one sheet before running nesting.');
+          // Get the first file's material and thickness to pre-fill the sheet modal
+          const firstFile = state.files[0];
+          const material = firstFile?.material || '';
+          const thickness = firstFile?.thickness || '';
+          
+          // Open sheet modal with pre-filled values
+          if (dom.sheetModal && dom.sheetMaterial) {
+            state.editingSheetId = null;
+            dom.sheetWidthMode.value = 'fixed';
+            if (typeof dom.sheetWidthMode._syncCustomSelect === 'function') dom.sheetWidthMode._syncCustomSelect();
+            dom.sheetHeight.value = '1250';
+            dom.sheetWidth.value = '3000';
+            dom.sheetMaterial.value = material;
+            if (dom.sheetThickness) dom.sheetThickness.value = thickness;
+            dom.confirmSheet.textContent = 'Add Sheet';
+            if (updateSheetModeControls) updateSheetModeControls();
+            dom.sheetModal.classList.add('open');
+          } else {
+            showStartRequirementsWarning('Add at least one sheet before running nesting.');
+          }
           return;
         }
 
